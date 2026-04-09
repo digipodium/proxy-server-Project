@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard">
+
+    <h2>Welcome, {{ username }} 👋</h2>
+
+    <div class="cards">
+        <div class="card">
+            <h3>Total Requests</h3>
+            <p>120</p>
+        </div>
+
+        <div class="card">
+            <h3>Blocked Requests</h3>
+            <p>25</p>
+        </div>
+
+        <div class="card">
+            <h3>Active Users</h3>
+            <p>5</p>
+        </div>
+    </div>
+
+    <div class="actions">
+        <a href="#">View Traffic</a>
+        <a href="#">View Logs</a>
+        <a href="#">Blocked Sites</a>
+    </div>
+
+    <br>
+    <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-container">
+
+    <div class="auth-card">
+        <h2>Welcome Back 👋</h2>
+        <p class="subtitle">Login to access proxy dashboard</p>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="alert">
+              {{ messages[0] }}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="auth-form">
+
+            <div class="input-group">
+                <label>Username</label>
+                <input type="text" name="username" placeholder="Enter username" required>
+            </div>
+
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" name="password" id="password" placeholder="Enter password" required>
+            </div>
+
+            <!-- Show Password -->
+            <div class="show-pass">
+                <input type="checkbox" onclick="togglePassword()"> Show Password
+            </div>
+
+            <button type="submit" class="btn-primary">Login</button>
+
+        </form>
+
+        <div class="auth-links">
+            <a href="{{ url_for('forgot_password') }}">Forgot password?</a>
+            <p>New here? <a href="{{ url_for('register') }}">Sign up</a></p>
+        </div>
+    </div>
+
+</div>
+
+<!-- JS for Show Password -->
+<script>
+function togglePassword() {
+    var pass = document.getElementById("password");
+    pass.type = pass.type === "password" ? "text" : "password";
+}
+</script>
+
+{% endblock %}
