@@ -2,18 +2,96 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cyber Proxy Defender</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
     <nav class="navbar">
-        <h2>Cyber Proxy Defender</h2>
+        <div class="nav-shell">
+            <div>
+                <h2>Cyber Proxy Defender</h2>
+                <p class="nav-subtitle">Proxy Monitoring and Access Control</p>
+            </div>
+
+            {% if session.get('user') %}
+            <div class="nav-actions">
+                <div class="nav-links">
+                    <a href="{{ url_for('dashboard') }}" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
+                    <a href="{{ url_for('traffic') }}" class="{% if active_page == 'traffic' %}active{% endif %}">Traffic</a>
+                    <a href="{{ url_for('logs') }}" class="{% if active_page == 'logs' %}active{% endif %}">Logs</a>
+                </div>
+
+                <div class="profile-menu">
+                    <button
+                        class="profile-trigger"
+                        id="profileMenuButton"
+                        type="button"
+                        aria-expanded="false"
+                        aria-controls="profileDropdown"
+                    >
+                        <span class="avatar">{{ session.get('user')[0]|upper }}</span>
+                        <span class="profile-copy">
+                            <strong>{{ session.get('user') }}</strong>
+                            <small>Administrator</small>
+                        </span>
+                        <span class="profile-caret">▼</span>
+                    </button>
+
+                    <div class="profile-dropdown" id="profileDropdown" hidden>
+                        <a href="{{ url_for('profile') }}" class="{% if active_page == 'profile' %}active{% endif %}">My Profile</a>
+                        <a href="{{ url_for('settings') }}" class="{% if active_page == 'settings' %}active{% endif %}">Settings</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="nav-actions guest-actions">
+                <div class="nav-links">
+                    <a href="{{ url_for('home') }}" class="{% if active_page == 'home' %}active{% endif %}">Home</a>
+                    <a href="{{ url_for('home') }}#about">About</a>
+                </div>
+                <div class="guest-buttons">
+                    <a href="{{ url_for('login') }}" class="nav-ghost {% if active_page == 'login' %}active{% endif %}">Sign In</a>
+                    <a href="{{ url_for('register') }}" class="nav-solid {% if active_page == 'register' %}active{% endif %}">Sign Up</a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
     </nav>
 
     <div class="container">
         {% block content %}{% endblock %}
     </div>
+
+    {% if session.get('user') %}
+    <script>
+    const profileMenuButton = document.getElementById("profileMenuButton");
+    const profileDropdown = document.getElementById("profileDropdown");
+
+    if (profileMenuButton && profileDropdown) {
+        profileMenuButton.addEventListener("click", function () {
+            const isOpen = !profileDropdown.hasAttribute("hidden");
+            if (isOpen) {
+                profileDropdown.setAttribute("hidden", "");
+                profileMenuButton.setAttribute("aria-expanded", "false");
+            } else {
+                profileDropdown.removeAttribute("hidden");
+                profileMenuButton.setAttribute("aria-expanded", "true");
+            }
+        });
+
+        document.addEventListener("click", function (event) {
+            if (!event.target.closest(".profile-menu")) {
+                profileDropdown.setAttribute("hidden", "");
+                profileMenuButton.setAttribute("aria-expanded", "false");
+            }
+        });
+    }
+    </script>
+    {% endif %}
 
 </body>
 </html>

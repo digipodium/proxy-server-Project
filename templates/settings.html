@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-shell">
+    <section class="page-hero">
+        <div>
+            <p class="eyebrow">Settings</p>
+            <h2>Account and security preferences</h2>
+            <p class="page-copy">
+                Review the current dashboard settings and operational controls for your admin account.
+            </p>
+        </div>
+        <div class="hero-chip">Settings</div>
+    </section>
+
+    <section class="dashboard-panel dashboard-table-panel">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">Preferences</p>
+                <h3>Current configuration</h3>
+            </div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Setting</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for key, value in preferences.items() %}
+                    <tr>
+                        <td>{{ key.replace('_', ' ')|title }}</td>
+                        <td>{{ value }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="quick-actions stacked-actions">
+        <a href="{{ url_for('profile') }}" class="action-btn">My Profile</a>
+        <a href="{{ url_for('dashboard') }}" class="action-btn">Back to Dashboard</a>
+        <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+    </section>
+</div>
+{% endblock %}

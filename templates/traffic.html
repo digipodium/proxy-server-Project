@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-shell">
+    <section class="page-hero">
+        <div>
+            <p class="eyebrow">Traffic Monitoring Module</p>
+            <h2>Live proxy traffic visibility for smooth admin review</h2>
+            <p class="page-copy">
+                Monitor request flow, bandwidth, protocol mix, and suspicious activity from one place.
+                This section follows your synopsis by turning raw traffic into clear administrative insight.
+            </p>
+        </div>
+        <div class="hero-chip">Operator: {{ username }}</div>
+    </section>
+
+    <section class="dashboard-panel dashboard-table-panel">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">Proxy Configuration</p>
+                <h3>Use this proxy to capture traffic in real time</h3>
+            </div>
+        </div>
+        <div class="proxy-guide">
+            <div class="proxy-guide-card">
+                <strong>HTTP Proxy</strong>
+                <p>{{ proxy_host }}:{{ proxy_port }}</p>
+            </div>
+            <div class="proxy-guide-card">
+                <strong>HTTPS Proxy</strong>
+                <p>{{ proxy_host }}:{{ proxy_port }}</p>
+            </div>
+            <div class="proxy-guide-card">
+                <strong>Flow</strong>
+                <p>User Browser -> Proxy Server -> Website Server -> Proxy Server -> Browser</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="stats-grid">
+        <div class="stat-card">
+            <h3>Requests Observed</h3>
+            <p>{{ summary.requests_today }}</p>
+        </div>
+        <div class="stat-card success">
+            <h3>Allowed Requests</h3>
+            <p>{{ summary.allowed_count }}</p>
+        </div>
+        <div class="stat-card danger">
+            <h3>Blocked Requests</h3>
+            <p>{{ summary.blocked_count }}</p>
+        </div>
+        <div class="stat-card warning">
+            <h3>Bandwidth</h3>
+            <p>{{ summary.bandwidth_mb }} MB</p>
+        </div>
+    </section>
+
+    <section class="insight-grid">
+        <article class="dashboard-panel insight-card">
+            <div class="panel-header">
+                <div>
+                    <p class="eyebrow">Protocol Summary</p>
+                    <h3>HTTP / HTTPS usage</h3>
+                </div>
+            </div>
+            <div class="metric-list">
+                {% for row in protocol_rows %}
+                <div class="metric-row">
+                    <div>
+                        <strong>{{ row.protocol }}</strong>
+                        <p>{{ row.request_count }} requests</p>
+                    </div>
+                    <span>{{ (row.bandwidth_kb / 1024)|round(2) }} MB</span>
+                </div>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="dashboard-panel insight-card">
+            <div class="panel-header">
+                <div>
+                    <p class="eyebrow">Intrusion Detection</p>
+                    <h3>Recent suspicious activity</h3>
+                </div>
+            </div>
+            {% if recent_alerts %}
+            <div class="alert-list">
+                {% for alert in recent_alerts %}
+                <div class="alert-row">
+                    <div>
+                        <strong>{{ alert.username }}</strong>
+                        <p>{{ display_host(alert.url) }}</p>
+                    </div>
+                    <div class="log-meta">
+                        <span class="severity severity-{{ alert.threat_level|lower }}">{{ alert.threat_level }}</span>
+                        <small>{{ alert.requested_at }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty">No suspicious activity detected.</p>
+            {% endif %}
+        </article>
+    </section>
+
+    <section class="dashboard-panel dashboard-table-panel">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">Traffic Analysis</p>
+                <h3>Top requested destinations</h3>
+            </div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Destination</th>
+                        <th>Status</th>
+                        <th>Hits</th>
+                        <th>Bandwidth</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in top_destinations %}
+                    <tr>
+                        <td>{{ display_host(row.url) }}</td>
+                        <td><span class="pill pill-{{ row.status|lower }}">{{ row.status }}</span></td>
+                        <td>{{ row.hits }}</td>
+                        <td>{{ (row.bandwidth_kb / 1024)|round(2) }} MB</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="dashboard-panel dashboard-table-panel">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">Request Feed</p>
+                <h3>Latest monitored requests</h3>
+            </div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Real User IP</th>
+                        <th>Proxy Server IP</th>
+                        <th>Website Details</th>
+                        <th>Timing</th>
+                        <th>Website Domain</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in traffic_feed %}
+                    <tr>
+                        <td>{{ row.client_ip }}</td>
+                        <td>{{ row.proxy_ip }}</td>
+                        <td>
+                            <strong>{{ row.method }} / {{ row.protocol }}</strong><br>
+                            <small>{{ row.url }}</small><br>
+                            <span class="pill pill-{{ row.status|lower }}">{{ row.status }}</span>
+                        </td>
+                        <td>{{ row.request_time or row.requested_at }}</td>
+                        <td>{{ row.website_domain or display_host(row.url) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

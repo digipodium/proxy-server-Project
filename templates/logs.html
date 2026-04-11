@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-shell">
+    <section class="page-hero">
+        <div>
+            <p class="eyebrow">Logging and Reporting Module</p>
+            <h2>Centralized activity logs for reporting, auditing, and control</h2>
+            <p class="page-copy">
+                Review user actions, blocked access attempts, and policy data in one structured workspace.
+                This reflects your synopsis focus on accountability, reporting, and security visibility.
+            </p>
+        </div>
+        <div class="hero-chip">Analyst View</div>
+    </section>
+
+    <section class="stats-grid">
+        <div class="stat-card">
+            <h3>Total Events</h3>
+            <p>{{ metrics.total_events }}</p>
+        </div>
+        <div class="stat-card danger">
+            <h3>Security Alerts</h3>
+            <p>{{ metrics.security_alerts }}</p>
+        </div>
+        <div class="stat-card warning">
+            <h3>Blocked Events</h3>
+            <p>{{ metrics.blocked_events }}</p>
+        </div>
+        <div class="stat-card success">
+            <h3>Policy Rules</h3>
+            <p>{{ metrics.policy_rules }}</p>
+        </div>
+    </section>
+
+    <section class="insight-grid">
+        <article class="dashboard-panel insight-card">
+            <div class="panel-header">
+                <div>
+                    <p class="eyebrow">Policy Watch</p>
+                    <h3>Blocked access attempts</h3>
+                </div>
+            </div>
+            {% if blocked_activity %}
+            <div class="alert-list">
+                {% for row in blocked_activity %}
+                <div class="alert-row">
+                    <div>
+                        <strong>{{ row.username }}</strong>
+                        <p>{{ display_host(row.url) }}</p>
+                    </div>
+                    <div class="log-meta">
+                        <span class="severity severity-{{ row.threat_level|lower }}">{{ row.threat_level }}</span>
+                        <small>{{ row.requested_at }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty">No blocked activity recorded.</p>
+            {% endif %}
+        </article>
+
+        <article class="dashboard-panel insight-card">
+            <div class="panel-header">
+                <div>
+                    <p class="eyebrow">User Activity</p>
+                    <h3>Top active users</h3>
+                </div>
+            </div>
+            <div class="metric-list">
+                {% for row in activity_by_user %}
+                <div class="metric-row">
+                    <div>
+                        <strong>{{ row.username }}</strong>
+                        <p>Monitored activity</p>
+                    </div>
+                    <span>{{ row.total_events }} events</span>
+                </div>
+                {% endfor %}
+            </div>
+        </article>
+    </section>
+
+    <section class="dashboard-panel dashboard-table-panel">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">System Log</p>
+                <h3>Recent monitoring events</h3>
+            </div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>URL</th>
+                        <th>Method</th>
+                        <th>Protocol</th>
+                        <th>Status</th>
+                        <th>Threat</th>
+                        <th>Bandwidth</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in system_logs %}
+                    <tr>
+                        <td>{{ row.username }}</td>
+                        <td>{{ row.url }}</td>
+                        <td>{{ row.method }}</td>
+                        <td>{{ row.protocol }}</td>
+                        <td><span class="pill pill-{{ row.status|lower }}">{{ row.status }}</span></td>
+                        <td><span class="severity severity-{{ row.threat_level|lower }}">{{ row.threat_level }}</span></td>
+                        <td>{{ row.bandwidth_kb }} KB</td>
+                        <td>{{ row.requested_at }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="dashboard-panel dashboard-table-panel">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">Filtering Rules</p>
+                <h3>Blocked sites register</h3>
+            </div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>URL</th>
+                        <th>Reason</th>
+                        <th>Added</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in blocked_sites %}
+                    <tr>
+                        <td>{{ row.url }}</td>
+                        <td>{{ row.reason }}</td>
+                        <td>{{ row.created_at }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

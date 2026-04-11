@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-shell">
+    <section class="page-hero">
+        <div>
+            <p class="eyebrow">User Profile</p>
+            <h2>Profile details for {{ username }}</h2>
+            <p class="page-copy">
+                View your account identity and recent monitoring activity from one place.
+            </p>
+        </div>
+        <div class="hero-chip">My Profile</div>
+    </section>
+
+    <section class="insight-grid">
+        <article class="dashboard-panel insight-card">
+            <div class="panel-header">
+                <div>
+                    <p class="eyebrow">Account</p>
+                    <h3>Profile information</h3>
+                </div>
+            </div>
+            <div class="metric-list">
+                <div class="metric-row">
+                    <div>
+                        <strong>Username</strong>
+                        <p>{{ user.username if user else username }}</p>
+                    </div>
+                </div>
+                <div class="metric-row">
+                    <div>
+                        <strong>Role</strong>
+                        <p>Administrator</p>
+                    </div>
+                </div>
+                <div class="metric-row">
+                    <div>
+                        <strong>Joined</strong>
+                        <p>{{ user.created_at if user else 'Available after first save' }}</p>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <article class="dashboard-panel insight-card">
+            <div class="panel-header">
+                <div>
+                    <p class="eyebrow">Quick Access</p>
+                    <h3>Profile actions</h3>
+                </div>
+            </div>
+            <div class="quick-actions stacked-actions">
+                <a href="{{ url_for('settings') }}" class="action-btn">Open Settings</a>
+                <a href="{{ url_for('logs') }}" class="action-btn">View Logs</a>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </article>
+    </section>
+
+    <section class="dashboard-panel dashboard-table-panel">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">Recent Activity</p>
+                <h3>Latest requests by this user</h3>
+            </div>
+        </div>
+        {% if recent_activity %}
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Destination</th>
+                        <th>Status</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in recent_activity %}
+                    <tr>
+                        <td>{{ display_host(row.url) }}</td>
+                        <td><span class="pill pill-{{ row.status|lower }}">{{ row.status }}</span></td>
+                        <td>{{ row.requested_at }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty">No activity found for this user yet.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
