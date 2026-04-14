@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-shell">
+    <section class="page-hero">
+        <div>
+            <p class="eyebrow">About Project</p>
+            <h2>Understanding Cyber Proxy Defender</h2>
+            <p class="page-copy">
+                Cyber Proxy Defender is a web-based security project that demonstrates how a proxy server can help
+                monitor user requests, block unsafe websites, and store traffic activity for analysis and reporting.
+            </p>
+        </div>
+        <div class="hero-chip">Proxy Security Model</div>
+    </section>
+
+    <section class="landing-grid">
+        <article class="landing-card">
+            <p class="eyebrow">Purpose</p>
+            <h2>Why this project exists</h2>
+            <p>
+                The project shows how organizations can improve web security by making requests pass through a
+                controlled proxy layer before reaching the internet.
+            </p>
+        </article>
+
+        <article class="landing-card">
+            <p class="eyebrow">How It Works</p>
+            <h2>Request flow</h2>
+            <p>
+                A user request goes to the proxy server first, where it can be inspected and filtered. Safe requests
+                are forwarded to the destination website, and blocked requests are logged for review.
+            </p>
+        </article>
+
+        <article class="landing-card">
+            <p class="eyebrow">Benefits</p>
+            <h2>Key learning points</h2>
+            <ul class="landing-list">
+                <li>Centralized traffic monitoring</li>
+                <li>Website filtering and access control</li>
+                <li>Security-focused logging and reporting</li>
+                <li>Protected access through user authentication</li>
+            </ul>
+        </article>
+    </section>
+
+    <section class="showcase-grid">
+        <article class="showcase-card showcase-card-wide">
+            <div class="showcase-copy">
+                <p class="eyebrow">Project Summary</p>
+                <h2>The application combines education, visibility, and basic access management.</h2>
+                <p>
+                    It is designed to help users understand how proxy-based web security works while also providing
+                    real pages for signing in, registering, and viewing dashboard data.
+                </p>
+            </div>
+            <div class="quick-actions stacked-actions">
+                <a href="{{ url_for('login') }}" class="action-btn">Go To Sign In</a>
+                <a href="{{ url_for('register') }}" class="logout-btn">Go To Sign Up</a>
+            </div>
+        </article>
+
+        <article class="showcase-card">
+            <p class="eyebrow">Authentication</p>
+            <h2>Sign In</h2>
+            <p>
+                Existing users can open the sign-in page and continue to the dashboard after authentication.
+            </p>
+        </article>
+
+        <article class="showcase-card">
+            <p class="eyebrow">Registration</p>
+            <h2>Sign Up</h2>
+            <p>
+                New users can create an account from the sign-up page and then log in to access protected features.
+            </p>
+        </article>
+    </section>
+</div>
+{% endblock %}

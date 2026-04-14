@@ -51,10 +51,10 @@
             <div class="nav-actions guest-actions">
                 <div class="nav-links">
                     <a href="{{ url_for('home') }}" class="{% if active_page == 'home' %}active{% endif %}">Home</a>
-                    <a href="{{ url_for('home') }}#about">About</a>
+                    <a href="{{ url_for('about') }}" class="{% if active_page == 'about' %}active{% endif %}">About</a>
                 </div>
                 <div class="guest-buttons">
-                    <a href="{{ url_for('login') }}" class="nav-ghost {% if active_page == 'login' %}active{% endif %}">Sign In</a>
+                    <a href="{{ url_for('login') }}" class="nav-ghost {% if active_page == 'login' %}active{% endif %}">Log In</a>
                     <a href="{{ url_for('register') }}" class="nav-solid {% if active_page == 'register' %}active{% endif %}">Sign Up</a>
                 </div>
             </div>

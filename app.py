@@ -352,7 +352,13 @@ def home():
     return render_template("home.html", active_page="home")
 
 
+@app.route("/about")
+def about():
+    return render_template("about.html", active_page="about")
+
+
 @app.route("/login", methods=["GET", "POST"])
+@app.route("/signin", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         username = request.form["username"].strip()
@@ -373,6 +379,7 @@ def login():
 
 
 @app.route("/register", methods=["GET", "POST"])
+@app.route("/signup", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
         username = request.form["username"].strip()
