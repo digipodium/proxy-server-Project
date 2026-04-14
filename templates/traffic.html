@@ -151,7 +151,7 @@
                         <th>Proxy Server IP</th>
                         <th>Website Details</th>
                         <th>Timing</th>
-                        <th>Website Domain</th>
+                        <th>Target Website</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -165,7 +165,10 @@
                             <span class="pill pill-{{ row.status|lower }}">{{ row.status }}</span>
                         </td>
                         <td>{{ row.request_time or row.requested_at }}</td>
-                        <td>{{ row.website_domain or display_host(row.url) }}</td>
+                        <td>
+                            <strong>{{ row.website_domain or display_host(row.url) }}</strong><br>
+                            <small class="ip-address">IP: {{ row.target_ip }}</small>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

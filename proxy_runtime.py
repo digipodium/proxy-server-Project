@@ -2,8 +2,22 @@ import select
 import socket
 import sqlite3
 import threading
+from datetime import datetime
 from contextlib import closing
 from urllib.parse import urlparse
+
+
+def get_real_local_ip(fallback_ip):
+    if fallback_ip == '127.0.0.1' or fallback_ip == 'localhost':
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return fallback_ip
+    return fallback_ip
 
 BUFFER_SIZE = 65536
 SOCKET_TIMEOUT = 15
@@ -46,16 +60,18 @@ def store_log(
     client_ip,
     proxy_ip,
     website_domain,
+    target_ip="",
 ):
+    requested_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with closing(open_db(database_path)) as db:
         db.execute(
             """
             INSERT INTO logs (
-                username, url, method, protocol, status, threat_level, bandwidth_kb, client_ip, proxy_ip, website_domain
+                username, url, method, protocol, status, threat_level, bandwidth_kb, client_ip, proxy_ip, website_domain, target_ip, requested_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (username, url, method, protocol, status, threat_level, bandwidth_kb, client_ip, proxy_ip, website_domain),
+            (username, url, method, protocol, status, threat_level, bandwidth_kb, client_ip, proxy_ip, website_domain, target_ip, requested_at),
         )
         db.commit()
 
@@ -138,6 +154,12 @@ def handle_https(client_socket, address, first_line, database_path):
         host = target
         port = 443
 
+    target_ip = ""
+    try:
+        target_ip = socket.gethostbyname(host)
+    except socket.error:
+        target_ip = "Unknown"
+
     blocked_rule = match_blocked_host(host, get_blocked_rules(database_path))
     client_ip = address[0]
     username = client_identity(address)
@@ -146,7 +168,7 @@ def handle_https(client_socket, address, first_line, database_path):
 
     if blocked_rule:
         client_socket.sendall(b"HTTP/1.1 403 Forbidden\r\n\r\nBlocked by proxy")
-        store_log(database_path, username, url, "CONNECT", "HTTPS", "Blocked", "High", 0, client_ip, PROXY_IP, website_domain)
+        store_log(database_path, username, url, "CONNECT", "HTTPS", "Blocked", "High", 0, client_ip, PROXY_IP, website_domain, target_ip)
         return
 
     remote_socket = None
@@ -166,10 +188,11 @@ def handle_https(client_socket, address, first_line, database_path):
             client_ip,
             PROXY_IP,
             website_domain,
+            target_ip,
         )
     except OSError:
         client_socket.sendall(b"HTTP/1.1 502 Bad Gateway\r\n\r\n")
-        store_log(database_path, username, url, "CONNECT", "HTTPS", "Blocked", "Critical", 0, client_ip, PROXY_IP, website_domain)
+        store_log(database_path, username, url, "CONNECT", "HTTPS", "Blocked", "Critical", 0, client_ip, PROXY_IP, website_domain, target_ip)
     finally:
         if remote_socket is not None:
             remote_socket.close()
@@ -179,6 +202,12 @@ def handle_http(client_socket, address, request_bytes, first_line, database_path
     method, host, port, protocol, url, forwarded_request = extract_host_and_port_from_http(
         first_line, request_bytes
     )
+    target_ip = ""
+    try:
+        target_ip = socket.gethostbyname(host)
+    except socket.error:
+        target_ip = "Unknown"
+
     blocked_rule = match_blocked_host(host, get_blocked_rules(database_path))
     client_ip = address[0]
     username = client_identity(address)
@@ -193,7 +222,7 @@ def handle_http(client_socket, address, request_bytes, first_line, database_path
             + body
         )
         client_socket.sendall(response)
-        store_log(database_path, username, url, method, protocol, "Blocked", "High", 0, client_ip, PROXY_IP, website_domain)
+        store_log(database_path, username, url, method, protocol, "Blocked", "High", 0, client_ip, PROXY_IP, website_domain, target_ip)
         return
 
     remote_socket = None
@@ -220,16 +249,20 @@ def handle_http(client_socket, address, request_bytes, first_line, database_path
             client_ip,
             PROXY_IP,
             website_domain,
+            target_ip,
         )
     except OSError:
         client_socket.sendall(b"HTTP/1.1 502 Bad Gateway\r\n\r\n")
-        store_log(database_path, username, url, method, protocol, "Blocked", "Critical", 0, client_ip, PROXY_IP, website_domain)
+        store_log(database_path, username, url, method, protocol, "Blocked", "Critical", 0, client_ip, PROXY_IP, website_domain, target_ip)
     finally:
         if remote_socket is not None:
             remote_socket.close()
 
 
 def handle_client(client_socket, address, database_path):
+    # Fix IP 
+    real_ip = get_real_local_ip(address[0])
+    address = (real_ip, address[1])
     with client_socket:
         try:
             client_socket.settimeout(SOCKET_TIMEOUT)

@@ -68,6 +68,7 @@ def init_db():
     ensure_column(db, "logs", "client_ip", "TEXT NOT NULL DEFAULT '0.0.0.0'")
     ensure_column(db, "logs", "proxy_ip", f"TEXT NOT NULL DEFAULT '{PROXY_PUBLIC_IP}'")
     ensure_column(db, "logs", "website_domain", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(db, "logs", "target_ip", "TEXT DEFAULT ''")
     db.execute(
         """
         CREATE TABLE IF NOT EXISTS blocked_sites (
@@ -191,6 +192,7 @@ def get_traffic_data():
             proxy_ip,
             url,
             website_domain,
+            target_ip,
             method,
             protocol,
             status,
@@ -241,6 +243,7 @@ def get_traffic_data():
             {
                 "client_ip": client_ip,
                 "proxy_ip": row["proxy_ip"] or PROXY_PUBLIC_IP,
+                "target_ip": row["target_ip"] or "Unknown",
                 "url": row["url"],
                 "website_domain": website_domain,
                 "method": row["method"],
