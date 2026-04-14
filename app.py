@@ -586,8 +586,7 @@ def logs():
 @app.route("/logout")
 def logout():
     session.pop("user", None)
-    flash("You have been logged out.")
-    return redirect(url_for("login"))
+    return redirect(url_for("home"))
 
 
 init_db()
