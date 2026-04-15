@@ -18,25 +18,45 @@
       {% endif %}
     {% endwith %}
 
-    <div class="stats-grid">
-        <div class="stat-card">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <div class="panel-header" style="margin-top: 10px;">
+        <div>
+            <p class="eyebrow">Traffic Analytics</p>
+        </div>
+    </div>
+    <div class="chart-grid">
+        <div class="chart-card">
             <h3>Total Requests</h3>
-            <p>{{ stats.total_requests }}</p>
+            <div class="chart-wrapper">
+                <canvas id="totalRequestsChart"></canvas>
+            </div>
         </div>
-
-        <div class="stat-card danger">
-            <h3>Blocked Requests</h3>
-            <p>{{ stats.blocked_requests }}</p>
-        </div>
-
-        <div class="stat-card success">
+        <div class="chart-card">
             <h3>Registered Users</h3>
-            <p>{{ stats.active_users }}</p>
+            <div class="chart-wrapper">
+                <canvas id="registeredUsersChart"></canvas>
+            </div>
         </div>
+    </div>
 
-        <div class="stat-card warning">
+    <div class="panel-header" style="margin-top: 10px;">
+        <div>
+            <p class="eyebrow">Security Insights</p>
+        </div>
+    </div>
+    <div class="chart-grid">
+        <div class="chart-card">
+            <h3>Blocked Requests</h3>
+            <div class="chart-wrapper">
+                <canvas id="blockedRequestsChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
             <h3>Blocked Sites</h3>
-            <p>{{ stats.blocked_sites }}</p>
+            <div class="chart-wrapper">
+                <canvas id="blockedSitesChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -97,4 +117,144 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Shared Chart.js options for responsiveness
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    titleColor: '#fff',
+                    bodyColor: '#cbd5e1',
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    borderWidth: 1,
+                    padding: 10,
+                    cornerRadius: 8
+                }
+            },
+            interaction: { mode: 'nearest', axis: 'x', intersect: false },
+            scales: {
+                x: { grid: { display: false } },
+                y: { grid: { color: '#f1f5f9' }, beginAtZero: true }
+            }
+        };
+
+        // 1. Total Requests (Area Chart)
+        const ctxTotal = document.getElementById('totalRequestsChart').getContext('2d');
+        const gradientTotal = ctxTotal.createLinearGradient(0, 0, 0, 400);
+        gradientTotal.addColorStop(0, 'rgba(52, 152, 219, 0.5)');
+        gradientTotal.addColorStop(1, 'rgba(52, 152, 219, 0.0)');
+
+        const totalChart = new Chart(ctxTotal, {
+            type: 'line',
+            data: {
+                labels: ['10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm'],
+                datasets: [{
+                    label: 'Total Requests',
+                    data: [120, 190, 300, 250, 400, 350, 420],
+                    borderColor: '#3498db',
+                    backgroundColor: gradientTotal,
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4 // Smooth curve
+                }]
+            },
+            options: commonOptions
+        });
+
+        // 2. Registered Users (Line Chart)
+        const ctxUsers = document.getElementById('registeredUsersChart').getContext('2d');
+        const usersChart = new Chart(ctxUsers, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Active Users',
+                    data: [2, 4, 3, 6, 5, 8, 9],
+                    borderColor: '#2ecc71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#2ecc71',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    fill: false,
+                    tension: 0.4
+                }]
+            },
+            options: commonOptions
+        });
+
+        // 3. Blocked Requests (Bar Chart)
+        const ctxBlockedReq = document.getElementById('blockedRequestsChart').getContext('2d');
+        const blockedReqChart = new Chart(ctxBlockedReq, {
+            type: 'bar',
+            data: {
+                labels: ['10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm'],
+                datasets: [{
+                    label: 'Blocked Attempts',
+                    data: [5, 12, 8, 25, 15, 10, 18],
+                    backgroundColor: '#e74c3c',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { grid: { color: '#f1f5f9' }, beginAtZero: true }
+                }
+            }
+        });
+
+        // 4. Blocked Sites (Pie Chart)
+        const ctxBlockedSites = document.getElementById('blockedSitesChart').getContext('2d');
+        const blockedSitesChart = new Chart(ctxBlockedSites, {
+            type: 'doughnut',
+            data: {
+                labels: ['malware.com', 'phishing-alert.net', 'trackers.net', 'ads.google', 'other'],
+                datasets: [{
+                    data: [45, 25, 15, 10, 5],
+                    backgroundColor: ['#e74c3c', '#e67e22', '#f1c40f', '#34495e', '#bdc3c7'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8 } },
+                    tooltip: commonOptions.plugins.tooltip
+                },
+                cutout: '70%' // Makes it a nice donut
+            }
+        });
+
+        // Simulate Real-time Data Animation Tracker
+        setInterval(() => {
+            const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            // Push new Total Request dummy data point
+            totalChart.data.labels.push(timeLabel);
+            totalChart.data.labels.shift();
+            totalChart.data.datasets[0].data.push(Math.floor(Math.random() * (500 - 300 + 1) + 300));
+            totalChart.data.datasets[0].data.shift();
+            totalChart.update();
+
+            // Push new Blocked Request dummy data point
+            blockedReqChart.data.labels.push(timeLabel);
+            blockedReqChart.data.labels.shift();
+            blockedReqChart.data.datasets[0].data.push(Math.floor(Math.random() * (30 - 5 + 1) + 5));
+            blockedReqChart.data.datasets[0].data.shift();
+            blockedReqChart.update();
+        }, 4000);
+    });
+</script>
 {% endblock %}

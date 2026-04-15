@@ -5,7 +5,9 @@ from threading import Lock
 from urllib.parse import urlparse
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from flask import Flask, flash, g, redirect, render_template, request, session, url_for
+from flask import Flask, flash, g, redirect, render_template, request, session, url_for, jsonify, Response
+import json
+import traceback
 from proxy_runtime import start_proxy_server
 
 app = Flask(__name__)
@@ -241,18 +243,18 @@ def get_traffic_data():
         website_domain = row["website_domain"] or display_host(row["url"])
         traffic_feed.append(
             {
-                "client_ip": client_ip,
-                "proxy_ip": row["proxy_ip"] or PROXY_PUBLIC_IP,
-                "target_ip": row["target_ip"] or "Unknown",
-                "url": row["url"],
-                "website_domain": website_domain,
-                "method": row["method"],
-                "protocol": row["protocol"],
-                "status": row["status"],
-                "threat_level": row["threat_level"],
-                "bandwidth_kb": row["bandwidth_kb"],
-                "requested_at": row["requested_at"],
-                "request_time": row["request_time"],
+                "client_ip": str(client_ip or "Unknown"),
+                "proxy_ip": str(row["proxy_ip"] or PROXY_PUBLIC_IP),
+                "target_ip": str(row["target_ip"] or "Unknown"),
+                "url": str(row["url"] or ""),
+                "website_domain": str(website_domain or ""),
+                "method": str(row["method"] or "GET"),
+                "protocol": str(row["protocol"] or "HTTPS"),
+                "status": str(row["status"] or "Allowed"),
+                "threat_level": str(row["threat_level"] or "Low"),
+                "bandwidth_kb": int(row["bandwidth_kb"] or 0),
+                "requested_at": str(row["requested_at"] or ""),
+                "request_time": str(row["request_time"] or ""),
             }
         )
     return summary, protocol_rows, top_destinations, traffic_feed, recent_alerts
@@ -313,6 +315,25 @@ def display_host(url):
     return parsed.netloc or url
 
 
+def rows_to_dicts(rows):
+    return [dict(row) for row in rows]
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    tb = traceback.format_exc()
+    print(f"CRITICAL ERROR:\n{tb}")
+    return Response(
+        json.dumps({
+            "error": "Internal Server Error",
+            "message": str(error),
+            "traceback": tb
+        }),
+        status=500,
+        mimetype='application/json'
+    )
+
+
 def hash_password(password):
     return generate_password_hash(password)
 
@@ -348,6 +369,36 @@ def close_db(error):
     db = g.pop("db", None)
     if db is not None:
         db.close()
+
+
+@app.route("/api/traffic-feed")
+def api_traffic_feed():
+    try:
+        if "user" not in session:
+            return Response(json.dumps({"error": "Unauthorized"}), status=401, mimetype='application/json')
+        
+        _, _, _, traffic_feed, _ = get_traffic_data()
+        # Bulletproof manual serialization
+        json_data = json.dumps(traffic_feed, default=str)
+        return Response(json_data, mimetype='application/json')
+    except Exception as e:
+        print(f"DEBUG ERROR [traffic-feed]: {e}")
+        return Response(json.dumps({"error": "Internal Server Error", "message": str(e)}), status=500, mimetype='application/json')
+
+
+@app.route("/api/system-logs")
+def api_system_logs():
+    try:
+        if "user" not in session:
+            return Response(json.dumps({"error": "Unauthorized"}), status=401, mimetype='application/json')
+        
+        _, system_logs, _, _, _ = get_logs_data()
+        # Bulletproof manual serialization
+        json_data = json.dumps(rows_to_dicts(system_logs), default=str)
+        return Response(json_data, mimetype='application/json')
+    except Exception as e:
+        print(f"DEBUG ERROR [system-logs]: {e}")
+        return Response(json.dumps({"error": "Internal Server Error", "message": str(e)}), status=500, mimetype='application/json')
 
 
 @app.route("/")
@@ -484,21 +535,25 @@ def change_password():
 
 @app.route("/dashboard")
 def dashboard():
-    if "user" not in session:
-        return redirect(url_for("login"))
+    try:
+        if "user" not in session:
+            return redirect(url_for("login"))
 
-    ensure_proxy_server()
-    stats, latest_users = get_overview_data()
+        ensure_proxy_server()
+        stats, latest_users = get_overview_data()
 
-    return render_template(
-        "dashboard.html",
-        username=session["user"],
-        stats=stats,
-        latest_users=latest_users,
-        proxy_host=PROXY_HOST,
-        proxy_port=PROXY_PORT,
-        active_page="dashboard",
-    )
+        return render_template(
+            "dashboard.html",
+            username=session["user"],
+            stats=stats,
+            latest_users=latest_users,
+            proxy_host=PROXY_HOST,
+            proxy_port=PROXY_PORT,
+            active_page="dashboard",
+        )
+    except Exception as e:
+        tb = traceback.format_exc()
+        return f"<h1>Dashboard Error</h1><pre>{tb}</pre>", 500
 
 
 @app.route("/profile")

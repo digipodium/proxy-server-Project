@@ -4,36 +4,12 @@
 <div class="page-shell">
     <section class="page-hero">
         <div>
-            <p class="eyebrow">Traffic Monitoring Module</p>
+            <p class="eyebrow">Traffic Monitoring</p>
             <h2>Live proxy traffic visibility for smooth admin review</h2>
             <p class="page-copy">
                 Monitor request flow, bandwidth, protocol mix, and suspicious activity from one place.
                 This section follows your synopsis by turning raw traffic into clear administrative insight.
             </p>
-        </div>
-        <div class="hero-chip">Operator: {{ username }}</div>
-    </section>
-
-    <section class="dashboard-panel dashboard-table-panel">
-        <div class="panel-header">
-            <div>
-                <p class="eyebrow">Proxy Configuration</p>
-                <h3>Use this proxy to capture traffic in real time</h3>
-            </div>
-        </div>
-        <div class="proxy-guide">
-            <div class="proxy-guide-card">
-                <strong>HTTP Proxy</strong>
-                <p>{{ proxy_host }}:{{ proxy_port }}</p>
-            </div>
-            <div class="proxy-guide-card">
-                <strong>HTTPS Proxy</strong>
-                <p>{{ proxy_host }}:{{ proxy_port }}</p>
-            </div>
-            <div class="proxy-guide-card">
-                <strong>Flow</strong>
-                <p>User Browser -> Proxy Server -> Website Server -> Proxy Server -> Browser</p>
-            </div>
         </div>
     </section>
 
@@ -142,6 +118,7 @@
                 <p class="eyebrow">Request Feed</p>
                 <h3>Latest monitored requests</h3>
             </div>
+            <button type="button" id="refresh-traffic-btn" class="action-btn" style="background: #3498db; padding: 6px 14px; font-size: 13px; cursor: pointer; border: none;">Refresh Feed</button>
         </div>
         <div class="table-container">
             <table>
@@ -154,7 +131,7 @@
                         <th>Target Website</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="traffic-feed-body">
                     {% for row in traffic_feed %}
                     <tr>
                         <td>{{ row.client_ip }}</td>
@@ -176,4 +153,86 @@
         </div>
     </section>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const refreshBtn = document.getElementById('refresh-traffic-btn');
+        const tableBody = document.getElementById('traffic-feed-body');
+
+        async function updateTrafficFeed() {
+            console.log("Manual refresh triggered for traffic feed.");
+            
+            // Visual feedback: Disable button and change text
+            const originalText = refreshBtn.innerHTML;
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '<span class="spinner"></span> Refreshing...';
+            refreshBtn.style.opacity = '0.7';
+            refreshBtn.style.cursor = 'not-allowed';
+
+            try {
+                const response = await fetch('/api/traffic-feed');
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.log("SERVER ERROR PAGE CONTENT:", errorText);
+                    let errMsg = 'Server Error';
+                    try {
+                        const errJson = JSON.parse(errorText);
+                        errMsg = (errJson.message || errJson.error || errMsg);
+                        if (errJson.traceback) {
+                            console.error("PYTHON TRACEBACK:", errJson.traceback);
+                            errMsg += "\n\n(See browser console for details)";
+                        }
+                    } catch (e) {
+                        errMsg = "Server returned an HTML error. Please check your app.py terminal!";
+                    }
+                    throw new Error(errMsg);
+                }
+                
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    let html = '';
+                    data.forEach(row => {
+                        html += `
+                        <tr>
+                            <td>${row.client_ip}</td>
+                            <td>${row.proxy_ip}</td>
+                            <td>
+                                <strong>${row.method} / ${row.protocol}</strong><br>
+                                <small>${row.url}</small><br>
+                                <span class="pill pill-${row.status.toLowerCase()}">${row.status}</span>
+                            </td>
+                            <td>${row.request_time || row.requested_at}</td>
+                            <td>
+                                <strong>${row.website_domain || (row.url.split('/')[2] || row.url)}</strong><br>
+                                <small class="ip-address">IP: ${row.target_ip}</small>
+                            </td>
+                        </tr>
+                        `;
+                    });
+                    tableBody.innerHTML = html;
+                    console.log("Traffic feed successfully updated.");
+                } else {
+                    console.warn("No traffic data received.");
+                }
+            } catch (error) {
+                console.error('Error fetching traffic feed:', error);
+                alert("Failed to refresh: " + error.message);
+            } finally {
+                // Restore button state
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = originalText;
+                refreshBtn.style.opacity = '1';
+                refreshBtn.style.cursor = 'pointer';
+            }
+        }
+
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', updateTrafficFeed);
+        } else {
+            console.error("Refresh button not found in DOM!");
+        }
+    });
+</script>
 {% endblock %}

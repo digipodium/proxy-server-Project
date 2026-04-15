@@ -4,14 +4,13 @@
 <div class="page-shell">
     <section class="page-hero">
         <div>
-            <p class="eyebrow">Logging and Reporting Module</p>
+            <p class="eyebrow">Logging and Reporting</p>
             <h2>Centralized activity logs for reporting, auditing, and control</h2>
             <p class="page-copy">
                 Review user actions, blocked access attempts, and policy data in one structured workspace.
                 This reflects your synopsis focus on accountability, reporting, and security visibility.
             </p>
         </div>
-        <div class="hero-chip">Analyst View</div>
     </section>
 
     <section class="stats-grid">
@@ -88,6 +87,7 @@
                 <p class="eyebrow">System Log</p>
                 <h3>Recent monitoring events</h3>
             </div>
+            <button type="button" id="refresh-logs-btn" class="action-btn" style="background: #3498db; padding: 6px 14px; font-size: 13px; cursor: pointer; border: none;">Refresh Logs</button>
         </div>
         <div class="table-container">
             <table>
@@ -103,7 +103,7 @@
                         <th>Time</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="system-logs-body">
                     {% for row in system_logs %}
                     <tr>
                         <td>{{ row.username }}</td>
@@ -150,4 +150,82 @@
         </div>
     </section>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const refreshBtn = document.getElementById('refresh-logs-btn');
+        const tableBody = document.getElementById('system-logs-body');
+
+        async function updateSystemLogs() {
+            console.log("Manual refresh triggered for system logs.");
+            
+            // Visual feedback: Disable button and change text
+            const originalText = refreshBtn.innerHTML;
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '<span class="spinner"></span> Refreshing...';
+            refreshBtn.style.opacity = '0.7';
+            refreshBtn.style.cursor = 'not-allowed';
+
+            try {
+                const response = await fetch('/api/system-logs');
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.log("SERVER ERROR PAGE CONTENT:", errorText);
+                    let errMsg = 'Server Error';
+                    try {
+                        const errJson = JSON.parse(errorText);
+                        errMsg = (errJson.message || errJson.error || errMsg);
+                        if (errJson.traceback) {
+                            console.error("PYTHON TRACEBACK:", errJson.traceback);
+                            errMsg += "\n\n(See browser console for details)";
+                        }
+                    } catch (e) {
+                        errMsg = "Server returned an HTML error. Please check your app.py terminal!";
+                    }
+                    throw new Error(errMsg);
+                }
+                
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    let html = '';
+                    data.forEach(row => {
+                        html += `
+                        <tr>
+                            <td>${row.username}</td>
+                            <td>${row.url}</td>
+                            <td>${row.method}</td>
+                            <td>${row.protocol}</td>
+                            <td><span class="pill pill-${row.status.toLowerCase()}">${row.status}</span></td>
+                            <td><span class="severity severity-${row.threat_level.toLowerCase()}">${row.threat_level}</span></td>
+                            <td>${row.bandwidth_kb} KB</td>
+                            <td>${row.requested_at}</td>
+                        </tr>
+                        `;
+                    });
+                    tableBody.innerHTML = html;
+                    console.log("System logs successfully updated.");
+                } else {
+                    console.warn("No log data received.");
+                }
+            } catch (error) {
+                console.error('Error fetching system logs:', error);
+                alert("Failed to refresh: " + error.message);
+            } finally {
+                // Restore button state
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = originalText;
+                refreshBtn.style.opacity = '1';
+                refreshBtn.style.cursor = 'pointer';
+            }
+        }
+
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', updateSystemLogs);
+        } else {
+            console.error("Refresh logs button not found in DOM!");
+        }
+    });
+</script>
 {% endblock %}
