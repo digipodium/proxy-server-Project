@@ -8,6 +8,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask, flash, g, redirect, render_template, request, session, url_for, jsonify, Response
 import json
 import traceback
+from functools import wraps
 from proxy_runtime import start_proxy_server
 
 app = Flask(__name__)
@@ -19,6 +20,7 @@ PROXY_PORT = 8888
 PROXY_PUBLIC_IP = "127.0.0.1"
 proxy_thread = None
 proxy_lock = Lock()
+ADMIN_REGISTRATION_PASSCODE = "PROXY_ADMIN_2024"
 
 
 def ensure_data_dir():
@@ -48,10 +50,17 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
+            full_name TEXT,
+            email TEXT,
+            role TEXT DEFAULT 'user',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """
     )
+    ensure_column(db, "users", "full_name", "TEXT")
+    ensure_column(db, "users", "email", "TEXT")
+    ensure_column(db, "users", "role", "TEXT DEFAULT 'user'")
+    ensure_column(db, "users", "status", "TEXT DEFAULT 'Active'")
     db.execute(
         """
         CREATE TABLE IF NOT EXISTS logs (
@@ -103,8 +112,8 @@ def seed_demo_data(db):
     user_count = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
     if user_count == 0:
         db.execute(
-            "INSERT INTO users (username, password) VALUES (?, ?)",
-            ("admin", hash_password("admin123")),
+            "INSERT INTO users (username, password, full_name, email, role) VALUES (?, ?, ?, ?, ?)",
+            ("admin", hash_password("admin123"), "System Administrator", "admin@cyclops-proxy.local", "admin"),
         )
 
     blocked_count = db.execute("SELECT COUNT(*) FROM blocked_sites").fetchone()[0]
@@ -348,12 +357,25 @@ def verify_password(stored_password, provided_password):
 
 def get_current_user():
     username = session.get("user")
-    if not username:
-        return None
     return get_db().execute(
-        "SELECT username, created_at FROM users WHERE username = ?",
+        "SELECT username, full_name, email, role, created_at FROM users WHERE username = ?",
         (username,),
     ).fetchone()
+
+def role_required(role):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if "user" not in session:
+                return redirect(url_for("login"))
+            user = get_current_user()
+            if not user or user["role"] != role:
+                if role == "admin":
+                    return render_template("access_denied.html"), 403
+                return redirect(url_for("dashboard"))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 
 def ensure_proxy_server():
@@ -424,7 +446,12 @@ def login():
         ).fetchone()
 
         if user and verify_password(user["password"], password):
+            db_user = get_db().execute(
+                "SELECT role FROM users WHERE username = ?",
+                (user["username"],),
+            ).fetchone()
             session["user"] = user["username"]
+            session["role"] = db_user["role"]
             return redirect(url_for("dashboard"))
 
         flash("Invalid username or password")
@@ -436,9 +463,13 @@ def login():
 @app.route("/signup", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
+        full_name = request.form.get("full_name", "").strip()
+        email = request.form.get("email", "").strip()
         username = request.form["username"].strip()
         password = request.form["password"]
         confirm_password = request.form["confirm_password"]
+        role = request.form.get("role", "user")
+        admin_passcode = request.form.get("admin_passcode", "")
 
         if not username or not password or not confirm_password:
             flash("Username and password are required")
@@ -446,6 +477,10 @@ def register():
 
         if password != confirm_password:
             flash("Passwords do not match")
+            return redirect(url_for("register"))
+
+        if role == "admin" and admin_passcode != ADMIN_REGISTRATION_PASSCODE:
+            flash("Invalid Admin Registration Passcode")
             return redirect(url_for("register"))
 
         db = get_db()
@@ -458,8 +493,8 @@ def register():
             flash("User already exists")
         else:
             db.execute(
-                "INSERT INTO users (username, password) VALUES (?, ?)",
-                (username, hash_password(password)),
+                "INSERT INTO users (username, password, full_name, email, role) VALUES (?, ?, ?, ?, ?)",
+                (username, hash_password(password), full_name, email, role),
             )
             db.commit()
             flash("Account created successfully. Please login.")
@@ -582,6 +617,55 @@ def profile():
     )
 
 
+@app.route("/admin/users")
+@role_required("admin")
+def admin_users():
+    users = get_db().execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
+    return render_template("admin_users.html", users=users, active_page="admin_users")
+
+@app.route("/admin/users/block/<username>")
+@role_required("admin")
+def block_user(username):
+    db = get_db()
+    db.execute("UPDATE users SET status = 'Blocked' WHERE username = ?", (username,))
+    db.commit()
+    flash(f"User {username} has been blocked.")
+    return redirect(url_for("admin_users"))
+
+@app.route("/admin/users/unblock/<username>")
+@role_required("admin")
+def unblock_user(username):
+    db = get_db()
+    db.execute("UPDATE users SET status = 'Active' WHERE username = ?", (username,))
+    db.commit()
+    flash(f"User {username} has been unblocked.")
+    return redirect(url_for("admin_users"))
+
+@app.route("/admin/blocked-sites", methods=["GET", "POST"])
+@role_required("admin")
+def admin_blocked_sites():
+    db = get_db()
+    if request.method == "POST":
+        url = request.form.get("url").strip()
+        reason = request.form.get("reason").strip()
+        if url:
+            db.execute("INSERT OR REPLACE INTO blocked_sites (url, reason) VALUES (?, ?)", (url, reason))
+            db.commit()
+            flash(f"Site {url} blocked successfully.")
+        return redirect(url_for("admin_blocked_sites"))
+
+    sites = db.execute("SELECT * FROM blocked_sites ORDER BY created_at DESC").fetchall()
+    return render_template("admin_blocked_sites.html", sites=sites, active_page="admin_blocked_sites")
+
+@app.route("/admin/blocked-sites/remove/<int:id>")
+@role_required("admin")
+def remove_blocked_site(id):
+    db = get_db()
+    db.execute("DELETE FROM blocked_sites WHERE id = ?", (id,))
+    db.commit()
+    flash("Site unblocked successfully.")
+    return redirect(url_for("admin_blocked_sites"))
+
 @app.route("/settings")
 def settings():
     if "user" not in session:
@@ -602,6 +686,7 @@ def settings():
 
 
 @app.route("/traffic")
+@role_required("admin")
 def traffic():
     if "user" not in session:
         return redirect(url_for("login"))
@@ -623,6 +708,7 @@ def traffic():
 
 
 @app.route("/logs")
+@role_required("admin")
 def logs():
     if "user" not in session:
         return redirect(url_for("login"))
@@ -644,6 +730,7 @@ def logs():
 @app.route("/logout")
 def logout():
     session.pop("user", None)
+    session.pop("role", None)
     return redirect(url_for("home"))
 
 

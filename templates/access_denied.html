@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="min-height: calc(100vh - 100px); display: flex; align-items: center; justify-content: center;">
+    <div class="denied-container">
+        <div class="denied-icon">
+            <i data-lucide="shield-alert" style="width: 48px; height: 48px;"></i>
+        </div>
+        <h1 style="font-size: 32px; font-weight: 800; margin-bottom: 8px;">Access Denied</h1>
+        <p style="color: #64748b; font-size: 16px; margin-bottom: 32px; max-width: 400px; margin-left: auto; margin-right: auto;">
+            You do not have the necessary permissions to access this administrative route. If you believe this is an error, please contact your system administrator.
+        </p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <a href="{{ url_for('dashboard') }}" class="landing-btn btn-neon" style="text-decoration: none;">
+                Return to Dashboard
+            </a>
+            <a href="{{ url_for('logout') }}" class="landing-btn" style="background: rgba(0,0,0,0.05); color: #1f2937; text-decoration: none;">
+                Switch Account
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

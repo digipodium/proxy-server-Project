@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-shell">
+    <section class="page-hero">
+        <div>
+            <p class="eyebrow">User Management</p>
+            <h2>Manage account access and permissions</h2>
+            <p class="page-copy">
+                View all registered users, monitor their roles, and manage their access status to the proxy server.
+            </p>
+        </div>
+        <div class="hero-chip">Admin Only</div>
+    </section>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2); margin-bottom: 20px;">
+          {{ messages[0] }}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <section class="dashboard-panel dashboard-table-panel">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">Database</p>
+                <h3>Registered Users</h3>
+            </div>
+            <a href="{{ url_for('register') }}" class="action-btn" style="font-size: 13px; padding: 6px 14px;">Add User</a>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Identity</th>
+                        <th>Role</th>
+                        <th>Created At</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>
+                            <strong>{{ user.username }}</strong><br>
+                            <small style="color: #64748b;">{{ user.email or 'No email provided' }}</small>
+                        </td>
+                        <td>
+                            <span class="pill" style="background: {% if user.role == 'admin' %}rgba(59, 130, 246, 0.1){% else %}rgba(100, 116, 139, 0.1){% endif %}; color: {% if user.role == 'admin' %}#3b82f6{% else %}#64748b{% endif %};">
+                                {{ user.role|upper }}
+                            </span>
+                        </td>
+                        <td>{{ user.created_at }}</td>
+                        <td>
+                            <span class="pill pill-{{ 'allowed' if user.status == 'Active' else 'blocked' }}">
+                                {{ user.status or 'Active' }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if user.username != session.get('user') %}
+                                {% if user.status == 'Blocked' %}
+                                <a href="{{ url_for('unblock_user', username=user.username) }}" style="color: #2ecc71; font-size: 13px; font-weight: 600;">Unblock</a>
+                                {% else %}
+                                <a href="{{ url_for('block_user', username=user.username) }}" style="color: #ef4444; font-size: 13px; font-weight: 600;">Block User</a>
+                                {% endif %}
+                            {% else %}
+                            <small style="color: #94a3b8; font-style: italic;">Current Session</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

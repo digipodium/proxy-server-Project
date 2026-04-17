@@ -24,6 +24,18 @@
             <div class="metric-list">
                 <div class="metric-row">
                     <div>
+                        <strong>Full Name</strong>
+                        <p>{{ user.full_name if user and user.full_name else 'Not specified' }}</p>
+                    </div>
+                </div>
+                <div class="metric-row">
+                    <div>
+                        <strong>Email Address</strong>
+                        <p>{{ user.email if user and user.email else 'Not specified' }}</p>
+                    </div>
+                </div>
+                <div class="metric-row">
+                    <div>
                         <strong>Username</strong>
                         <p>{{ user.username if user else username }}</p>
                     </div>

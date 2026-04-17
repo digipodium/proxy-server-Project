@@ -4,50 +4,94 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cyber Proxy Defender</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="{% if active_page == 'home' %}landing-page{% elif active_page in ['login', 'register', 'forgot_password'] %}auth-page{% endif %}">
 
+    {% if session.get('user') %}
+    <!-- Sidebar Layout for App -->
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i data-lucide="shield-check" style="color: var(--accent-cyan);"></i>
+                    <h1>CP Defender</h1>
+                </div>
+                <p>Security Dashboard</p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('dashboard') }}" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+                    <i data-lucide="layout-dashboard"></i>
+                    Dashboard
+                </a>
+
+                {% if session.get('role') == 'admin' %}
+                <a href="{{ url_for('traffic') }}" class="nav-item {% if active_page == 'traffic' %}active{% endif %}">
+                    <i data-lucide="activity"></i>
+                    Traffic Monitoring
+                </a>
+                <a href="{{ url_for('admin_users') }}" class="nav-item {% if active_page == 'admin_users' %}active{% endif %}">
+                    <i data-lucide="users"></i>
+                    Manage Access
+                </a>
+                <a href="{{ url_for('admin_blocked_sites') }}" class="nav-item {% if active_page == 'admin_blocked_sites' %}active{% endif %}">
+                    <i data-lucide="shield-off"></i>
+                    Firewall Rules
+                </a>
+                <a href="{{ url_for('logs') }}" class="nav-item {% if active_page == 'logs' %}active{% endif %}">
+                    <i data-lucide="bar-chart-2"></i>
+                    System Logs
+                </a>
+                <a href="{{ url_for('settings') }}" class="nav-item {% if active_page == 'settings' %}active{% endif %}">
+                    <i data-lucide="settings"></i>
+                    Configuration
+                </a>
+                {% else %}
+                <a href="{{ url_for('profile') }}" class="nav-item {% if active_page == 'profile' %}active{% endif %}">
+                    <i data-lucide="user"></i>
+                    My Activity
+                </a>
+                <a href="{{ url_for('dashboard') }}" class="nav-item">
+                    <i data-lucide="slash"></i>
+                    Blocked Sites
+                </a>
+                {% endif %}
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <div class="avatar">{{ session.get('user')[0]|upper }}</div>
+                    <div class="details">
+                        <strong>{{ session.get('user') }}</strong>
+                        <span>{{ session.get('role')|capitalize }} Account</span>
+                    </div>
+                </div>
+                <a href="{{ url_for('logout') }}" class="nav-item logout-link" style="margin-top: 10px;">
+                    <i data-lucide="log-out"></i>
+                    Log Out
+                </a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    {% else %}
+    <!-- Standard Navbar for Landing/Auth -->
     <nav class="navbar">
         <div class="nav-shell">
             <div>
                 <h2>Cyber Proxy Defender</h2>
-                <p class="nav-subtitle">Proxy Monitoring and Access Control</p>
+                <p class="nav-subtitle">Secure Proxy Framework</p>
             </div>
 
-            {% if session.get('user') %}
-            <div class="nav-actions">
-                <div class="nav-links">
-                    <a href="{{ url_for('dashboard') }}" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
-                    <a href="{{ url_for('traffic') }}" class="{% if active_page == 'traffic' %}active{% endif %}">Traffic</a>
-                    <a href="{{ url_for('logs') }}" class="{% if active_page == 'logs' %}active{% endif %}">Logs</a>
-                </div>
-
-                <div class="profile-menu">
-                    <button
-                        class="profile-trigger"
-                        id="profileMenuButton"
-                        type="button"
-                        aria-expanded="false"
-                        aria-controls="profileDropdown"
-                    >
-                        <span class="avatar">{{ session.get('user')[0]|upper }}</span>
-                        <span class="profile-copy">
-                            <strong>{{ session.get('user') }}</strong>
-                            <small>Administrator</small>
-                        </span>
-                        <span class="profile-caret">▼</span>
-                    </button>
-
-                    <div class="profile-dropdown" id="profileDropdown" hidden>
-                        <a href="{{ url_for('profile') }}" class="{% if active_page == 'profile' %}active{% endif %}">My Profile</a>
-                        <a href="{{ url_for('settings') }}" class="{% if active_page == 'settings' %}active{% endif %}">Settings</a>
-                        <div class="dropdown-divider"></div>
-                        <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
-                    </div>
-                </div>
-            </div>
-            {% else %}
             <div class="nav-actions guest-actions">
                 <div class="nav-links">
                     <a href="{{ url_for('home') }}" class="{% if active_page == 'home' %}active{% endif %}">Home</a>
@@ -58,40 +102,20 @@
                     <a href="{{ url_for('register') }}" class="nav-solid {% if active_page == 'register' %}active{% endif %}">Sign Up</a>
                 </div>
             </div>
-            {% endif %}
         </div>
     </nav>
 
     <div class="container">
-        {% block content %}{% endblock %}
+        {# Note: We reuse the same block name but since it's in a different branch of an 'if', 
+           standard Jinja2 still complains if it sees two definitions even if only one runs. #}
+        {% if not session.get('user') %}
+            {% block guest_content %}{% endblock %}
+        {% endif %}
     </div>
-
-    {% if session.get('user') %}
-    <script>
-    const profileMenuButton = document.getElementById("profileMenuButton");
-    const profileDropdown = document.getElementById("profileDropdown");
-
-    if (profileMenuButton && profileDropdown) {
-        profileMenuButton.addEventListener("click", function () {
-            const isOpen = !profileDropdown.hasAttribute("hidden");
-            if (isOpen) {
-                profileDropdown.setAttribute("hidden", "");
-                profileMenuButton.setAttribute("aria-expanded", "false");
-            } else {
-                profileDropdown.removeAttribute("hidden");
-                profileMenuButton.setAttribute("aria-expanded", "true");
-            }
-        });
-
-        document.addEventListener("click", function (event) {
-            if (!event.target.closest(".profile-menu")) {
-                profileDropdown.setAttribute("hidden", "");
-                profileMenuButton.setAttribute("aria-expanded", "false");
-            }
-        });
-    }
-    </script>
     {% endif %}
 
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 </html>

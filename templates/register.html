@@ -1,46 +1,142 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="auth-container">
-
-    <div class="auth-card">
-        <h2>Create Account</h2>
-        <p class="subtitle">Sign up to manage proxy monitoring</p>
-
-        {% with messages = get_flashed_messages() %}
-          {% if messages %}
-            <div class="alert">
-              {{ messages[0] }}
-            </div>
-          {% endif %}
-        {% endwith %}
-
-        <form method="POST" class="auth-form">
+{% block guest_content %}
+<div class="auth-split">
+    <!-- Left Pane: Branding & Visuals -->
+    <div class="auth-visual">
+        <div class="auth-brand">
+            <i data-lucide="shield-check" style="color: var(--accent-cyan);"></i>
+            <h2>Proxy Server Dashboard</h2>
+        </div>
+        
+        <div class="auth-visual-content">
+            <h1>Secure your network with <span>Smart Proxy Control</span></h1>
+            <p>Create your account to monitor traffic, block threats, and manage users efficiently.</p>
             
-            <div class="input-group">
-                <label>Username</label>
-                <input type="text" name="username" placeholder="Enter username" required>
-            </div>
-
-            <div class="input-group">
-                <label>Password</label>
-                <input type="password" name="password" placeholder="Enter password" required>
-            </div>
-
-            <div class="input-group">
-                <label>Confirm Password</label>
-                <input type="password" name="confirm_password" placeholder="Confirm password" required>
-            </div>
-
-            <button type="submit" class="btn-primary">Sign Up</button>
-        </form>
-
-        <div class="auth-links">
-            <p>Already have an account? 
-                <a href="{{ url_for('login') }}">Sign in</a>
-            </p>
+            <img src="{{ url_for('static', filename='images/auth_proxy.png') }}" alt="Secure Server" class="auth-server-graphic">
         </div>
     </div>
 
+    <!-- Right Pane: Sign Up Form -->
+    <div class="auth-form-pane">
+        <div class="auth-glass-card">
+            <div class="auth-card-header">
+                <i data-lucide="user-plus" style="width: 48px; height: 48px;"></i>
+                <h2>Create your Account</h2>
+            </div>
+
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <div class="alert" style="background: rgba(225, 29, 72, 0.1); border: 1px solid rgba(225, 29, 72, 0.2); color: #fb7185; padding: 12px; border-radius: 12px; margin-bottom: 20px; font-size: 14px; text-align: center;">
+                  {{ messages[0] }}
+                </div>
+              {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="auth-form">
+                <div class="auth-input-group">
+                    <i data-lucide="user"></i>
+                    <input type="text" name="full_name" placeholder="Full Name" required>
+                </div>
+
+                <div class="auth-input-group">
+                    <i data-lucide="mail"></i>
+                    <input type="email" name="email" placeholder="Email Address" required>
+                </div>
+
+                <div class="auth-input-group">
+                    <i data-lucide="at-sign"></i>
+                    <input type="text" name="username" placeholder="Username" required>
+                </div>
+
+                <div class="auth-input-group">
+                    <i data-lucide="lock"></i>
+                    <input type="password" name="password" placeholder="Password" required>
+                </div>
+
+                <div class="auth-input-group">
+                    <i data-lucide="shield-check"></i>
+                    <input type="password" name="confirm_password" placeholder="Confirm Password" required>
+                </div>
+
+                <div class="role-group">
+                    <label class="role-label">Choose Account Type</label>
+                    <div class="role-selector">
+                        <label class="role-option">
+                            <input type="radio" name="role" value="user" checked onchange="toggleAdminField(false)">
+                            <div class="role-box">
+                                <i data-lucide="user"></i>
+                                <span>Standard User</span>
+                            </div>
+                        </label>
+                        <label class="role-option">
+                            <input type="radio" name="role" value="admin" onchange="toggleAdminField(true)">
+                            <div class="role-box">
+                                <i data-lucide="shield"></i>
+                                <span>Administrator</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="adminPasscodeContainer" class="admin-passcode-container">
+                    <div class="auth-input-group">
+                        <i data-lucide="key"></i>
+                        <input type="password" name="admin_passcode" placeholder="Secret Admin Passcode">
+                    </div>
+                    <small class="passcode-hint">Administrative accounts require a system secret key.</small>
+                </div>
+
+                <div class="auth-terms">
+                    <input type="checkbox" id="terms" required>
+                    <label for="terms">I agree to <a href="#">Terms & Conditions</a></label>
+                </div>
+
+                <button type="submit" class="landing-btn btn-neon" style="width: 100%; justify-content: center; padding: 16px;">
+                    Create Account
+                </button>
+            </form>
+
+            <div class="social-auth">
+                <div class="social-divider">Or continue with</div>
+                <div class="social-buttons">
+                    <div class="btn-social btn-google">
+                        <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="Google" style="width: 18px;">
+                        Google
+                    </div>
+                    <div class="btn-social btn-github">
+                        <i data-lucide="github" style="width: 18px;"></i>
+                        GitHub
+                    </div>
+                </div>
+            </div>
+
+            <div class="auth-footer">
+                Already have an account? <a href="{{ url_for('login') }}">Login</a>
+            </div>
+        </div>
+
+        <div class="auth-legal">
+            <a href="#">Privacy Policy</a>
+            <span>|</span>
+            <a href="#">Terms</a>
+            <span>|</span>
+            <a href="#">Contact</a>
+        </div>
+    </div>
+    <script>
+        function toggleAdminField(show) {
+            const container = document.getElementById('adminPasscodeContainer');
+            const input = container.querySelector('input');
+            if (show) {
+                container.classList.add('show');
+                input.setAttribute('required', 'required');
+            } else {
+                container.classList.remove('show');
+                input.removeAttribute('required');
+                input.value = '';
+            }
+        }
+    </script>
 </div>
 {% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-shell">
+    <section class="page-hero">
+        <div>
+            <p class="eyebrow">Firewall & Policies</p>
+            <h2>Manage Blocked Destinations</h2>
+            <p class="page-copy">
+                Configure global blocking rules for the proxy server. Any request matching these URLs will be intercepted and denied.
+            </p>
+        </div>
+        <div class="hero-chip">Admin Only</div>
+    </section>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); margin-bottom: 20px;">
+          {{ messages[0] }}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="insight-grid" style="grid-template-columns: 1fr 2fr;">
+        <article class="dashboard-panel insight-card">
+            <div class="panel-header">
+                <div>
+                    <p class="eyebrow">New Rule</p>
+                    <h3>Block a Website</h3>
+                </div>
+            </div>
+            <form method="POST" class="auth-form" style="padding: 0;">
+                <div class="input-group">
+                    <label>Target URL / Domain</label>
+                    <input type="text" name="url" placeholder="example.com or http://..." required style="background: rgba(0,0,0,0.03);">
+                </div>
+                <div class="input-group">
+                    <label>Reason for Blocking</label>
+                    <input type="text" name="reason" placeholder="e.g., Suspicious activity" required style="background: rgba(0,0,0,0.03);">
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 10px;">Apply Block</button>
+            </form>
+        </article>
+
+        <article class="dashboard-panel dashboard-table-panel" style="margin: 0;">
+            <div class="panel-header">
+                <div>
+                    <p class="eyebrow">Firewall</p>
+                    <h3>Active Blocking Rules</h3>
+                </div>
+            </div>
+            {% if sites %}
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Destination</th>
+                            <th>Policy Reason</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for site in sites %}
+                        <tr>
+                            <td><strong>{{ site.url }}</strong></td>
+                            <td>{{ site.reason }}</td>
+                            <td>{{ site.created_at }}</td>
+                            <td>
+                                <a href="{{ url_for('remove_blocked_site', id=site.id) }}" style="color: #ef4444; font-size: 13px; font-weight: 600;">Remove Rule</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="empty" style="padding: 40px;">No custom blocking rules defined.</p>
+            {% endif %}
+        </article>
+    </div>
+</div>
+{% endblock %}

@@ -1,128 +1,148 @@
 {% extends "base.html" %}
 
-{% block content %}
+{% block guest_content %}
 <div class="landing-shell">
-    <section class="landing-hero">
-        <div class="hero-copy">
-            <p class="eyebrow">Cyber Security and Networking Project</p>
-            <h1>Welcome to Cyber Proxy Defender, a project built to monitor, filter, and understand network traffic.</h1>
-            <p class="landing-text">
-                This project demonstrates how a proxy server can sit between users and websites to improve security.
-                It captures traffic activity, blocks suspicious destinations, stores request logs, and gives admins
-                one dashboard for visibility, decision-making, and access control.
-            </p>
-        </div>
-
-        <div class="hero-visual-stack">
-            <div class="hero-illustration">
-                <div class="signal-card signal-card-user">
-                    <span>User Request</span>
-                    <strong>Client -> Proxy</strong>
+    <!-- Hero Section -->
+    <section class="landing-section hero-section">
+        <div class="landing-wrapper hero-content">
+            <div class="hero-text">
+                <p class="eyebrow" style="color: var(--accent-cyan); font-weight: 600;">Secure Network Infrastructure</p>
+                <h1>Smart Proxy Server Dashboard</h1>
+                <p>Monitor traffic, control access, and secure your network in real-time with our advanced proxy monitoring solution. Built for transparency and protection.</p>
+                <div class="btn-group">
+                    <a href="{{ url_for('register') }}" class="landing-btn btn-neon">
+                        Get Started <i data-lucide="arrow-right"></i>
+                    </a>
+                    <a href="{{ url_for('login') }}" class="landing-btn btn-outline">
+                        View Dashboard <i data-lucide="layout-dashboard"></i>
+                    </a>
                 </div>
-                <div class="signal-line"></div>
-                <div class="signal-card signal-card-proxy">
-                    <span>Protected Tunnel</span>
-                    <strong>Proxy Analysis</strong>
-                </div>
-                <div class="signal-line"></div>
-                <div class="signal-card signal-card-web">
-                    <span>Destination</span>
-                    <strong>Website Server</strong>
-                </div>
-                <div class="hero-orb hero-orb-a"></div>
-                <div class="hero-orb hero-orb-b"></div>
             </div>
+            <div class="hero-image">
+                <img src="{{ url_for('static', filename='images/hero_network.png') }}" alt="Network Landscape">
+            </div>
+        </div>
+    </section>
 
-            <div class="hero-panel">
-                <div class="hero-stat">
-                    <strong>Traffic Monitoring</strong>
-                    <p>Track requests, timing, proxy IP flow, and visited domains in real time.</p>
+    <!-- Features Section -->
+    <section class="landing-section" id="features">
+        <div class="landing-wrapper">
+            <div class="section-header">
+                <p class="eyebrow" style="color: var(--accent-blue);">Core Capabilities</p>
+                <h2>Premium Features</h2>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card glass-panel">
+                    <div class="feature-icon"><i data-lucide="activity"></i></div>
+                    <h3>Real-Time Traffic Monitoring</h3>
+                    <p>Gain live visibility into all network requests and active connections with millisecond precision.</p>
                 </div>
-                <div class="hero-stat">
-                    <strong>Access Control</strong>
-                    <p>Filter malicious or restricted websites before they reach the user.</p>
+                <div class="feature-card glass-panel">
+                    <div class="feature-icon"><i data-lucide="map-pin"></i></div>
+                    <h3>IP Tracking & Logging</h3>
+                    <p>Log and trace every incoming and outgoing IP address with detailed geographic and timing data.</p>
                 </div>
-                <div class="hero-stat">
-                    <strong>Centralized Logs</strong>
-                    <p>Store network events for auditing, reporting, and admin review.</p>
+                <div class="feature-card glass-panel">
+                    <div class="feature-icon"><i data-lucide="shield-x"></i></div>
+                    <h3>Website Blocking System</h3>
+                    <p>Create rules to block access to specific websites or domains easily, protecting your users from threats.</p>
+                </div>
+                <div class="feature-card glass-panel">
+                    <div class="feature-icon"><i data-lucide="users"></i></div>
+                    <h3>Multi-User Admin Control</h3>
+                    <p>Manage user roles and dashboard access permissions with a centralized authentication system.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="landing-grid" id="about">
-        <article class="landing-card">
-            <p class="eyebrow">About</p>
-            <h2>What this project is about</h2>
-            <p>
-                Cyber Proxy Defender is a knowledge-focused academic project that explains how secure proxy routing
-                can help organizations inspect requests, reduce unsafe access, and keep a record of network activity.
-            </p>
-        </article>
-
-        <article class="landing-card">
-            <p class="eyebrow">Modules</p>
-            <h2>Main sections of the system</h2>
-            <ul class="landing-list">
-                <li>Home page with project overview and quick navigation</li>
-                <li>Sign In page for existing users</li>
-                <li>Sign Up page for new user registration</li>
-                <li>About page that explains the project workflow and purpose</li>
-            </ul>
-        </article>
-
-        <article class="landing-card">
-            <p class="eyebrow">Workflow</p>
-            <h2>How the request moves</h2>
-            <p>
-                User Browser -> Proxy Server -> Website Server -> Proxy Server -> User Browser.
-                This makes it possible to inspect request flow, capture timing, and show complete records inside the
-                dashboard Traffic section.
-            </p>
-        </article>
+    <!-- How It Works Section -->
+    <section class="landing-section" id="how-it-works" style="background: rgba(59, 130, 246, 0.03);">
+        <div class="landing-wrapper">
+            <div class="section-header">
+                <p class="eyebrow" style="color: var(--accent-cyan);">The Process</p>
+                <h2>How It Works</h2>
+            </div>
+            <div class="workflow-container">
+                <div class="workflow-step">
+                    <div class="step-icon glass-panel"><i data-lucide="smartphone"></i></div>
+                    <p style="font-weight: 500;">User</p>
+                </div>
+                <div class="workflow-arrow"></div>
+                <div class="workflow-step">
+                    <div class="step-icon glass-panel" style="border-color: var(--accent-cyan); color: var(--accent-cyan);"><i data-lucide="shield-check"></i></div>
+                    <p style="font-weight: 600; color: var(--accent-cyan);">Proxy Server</p>
+                </div>
+                <div class="workflow-arrow"></div>
+                <div class="workflow-step">
+                    <div class="step-icon glass-panel"><i data-lucide="globe"></i></div>
+                    <p style="font-weight: 500;">Website</p>
+                </div>
+            </div>
+        </div>
     </section>
 
-    <section class="showcase-grid">
-        <article class="showcase-card showcase-card-wide">
-            <div class="showcase-copy">
-                <p class="eyebrow">Project Knowledge</p>
-                <h2>A simple web interface that helps explain secure proxy monitoring in a practical way.</h2>
-                <p>
-                    The homepage introduces the idea, the about page explains the flow, and the authentication pages
-                    lead users into the protected dashboard experience.
+    <!-- Dashboard Preview -->
+    <section class="landing-section" id="preview">
+        <div class="landing-wrapper">
+            <div class="section-header">
+                <p class="eyebrow" style="color: var(--accent-blue);">Visual Interface</p>
+                <h2>Dashboard Preview</h2>
+            </div>
+            <div class="preview-container glass-panel">
+                <img src="{{ url_for('static', filename='images/dashboard_preview.png') }}" alt="Dashboard Preview">
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="landing-section" id="about">
+        <div class="landing-wrapper about-content">
+            <div class="about-text">
+                <p class="eyebrow" style="color: var(--accent-cyan);">Project Overview</p>
+                <h2>About the Project</h2>
+                <p style="color: var(--text-dim); line-height: 1.8; margin-bottom: 24px;">
+                    Cyber Proxy Defender is a sophisticated knowledge-focused academic project exploring the intersection of network security and traffic monitoring. By implementing a secure proxy layer, this system provides administrators with complete oversight of data flow.
                 </p>
+                <ul style="list-style: none; padding: 0; color: var(--text-dim);">
+                    <li style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                        <i data-lucide="check-circle" style="color: var(--accent-cyan); width: 18px;"></i>
+                        Secure Request Interception
+                    </li>
+                    <li style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                        <i data-lucide="check-circle" style="color: var(--accent-cyan); width: 18px;"></i>
+                        Automated Activity Auditing
+                    </li>
+                    <li style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                        <i data-lucide="check-circle" style="color: var(--accent-cyan); width: 18px;"></i>
+                        Customizable Access Policies
+                    </li>
+                </ul>
             </div>
-            <div class="mini-dashboard">
-                <div class="mini-row">
-                    <div class="mini-chart"></div>
-                    <div class="mini-chart mini-chart-alt"></div>
-                </div>
-                <div class="mini-table">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
+            <div class="about-image">
+                <img src="{{ url_for('static', filename='images/about_security.png') }}" alt="Security Visualization">
             </div>
-        </article>
-
-        <article class="showcase-card">
-            <p class="eyebrow">Security Goal</p>
-            <h2>Every request can be checked before it becomes a risk.</h2>
-            <p>
-                By routing traffic through a proxy, the system can inspect the destination, apply filtering rules,
-                and help administrators respond faster to suspicious activity.
-            </p>
-        </article>
-
-        <article class="showcase-card">
-            <p class="eyebrow">User Flow</p>
-            <h2>Clear navigation makes the project easier to explore.</h2>
-            <p>
-                Users can open the home page, read about the project, and move directly to Sign In or Sign Up pages
-                with a single click.
-            </p>
-        </article>
+        </div>
     </section>
+
+    <!-- Footer -->
+    <footer class="landing-section" style="padding: 60px 24px; border-top: 1px solid var(--glass-border);">
+        <div class="landing-wrapper" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px;">
+            <div>
+                <h3 style="margin-bottom: 8px;">Cyber Proxy Defender</h3>
+                <p style="color: var(--text-dim);">© 2026 Proxy Dashboard Project. All rights reserved.</p>
+            </div>
+            <div style="display: flex; gap: 32px;">
+                <a href="#features" style="color: var(--text-dim);">Features</a>
+                <a href="#about" style="color: var(--text-dim);">About</a>
+                <a href="https://github.com" style="color: var(--text-dim);">GitHub</a>
+            </div>
+            <div style="display: flex; gap: 16px;">
+                <i data-lucide="facebook" style="width: 20px; color: var(--text-dim);"></i>
+                <i data-lucide="twitter" style="width: 20px; color: var(--text-dim);"></i>
+                <i data-lucide="instagram" style="width: 20px; color: var(--text-dim);"></i>
+            </div>
+        </div>
+    </footer>
 </div>
 {% endblock %}
