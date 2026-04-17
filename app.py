@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Lock
 from urllib.parse import urlparse
@@ -61,6 +62,7 @@ def init_db():
     ensure_column(db, "users", "email", "TEXT")
     ensure_column(db, "users", "role", "TEXT DEFAULT 'user'")
     ensure_column(db, "users", "status", "TEXT DEFAULT 'Active'")
+    ensure_column(db, "users", "last_active_at", "TIMESTAMP")
     db.execute(
         """
         CREATE TABLE IF NOT EXISTS logs (
@@ -392,6 +394,31 @@ def close_db(error):
     if db is not None:
         db.close()
 
+@app.before_request
+def update_last_active():
+    if "user" in session:
+        db = get_db()
+        db.execute(
+            "UPDATE users SET last_active_at = ? WHERE username = ?",
+            (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), session["user"]),
+        )
+        db.commit()
+
+
+@app.route("/api/dashboard-stats")
+def api_dashboard_stats():
+    try:
+        if "user" not in session:
+            return Response(json.dumps({"error": "Unauthorized"}), status=401, mimetype='application/json')
+        
+        stats, _ = get_overview_data()
+        # Bulletproof manual serialization
+        json_data = json.dumps(stats, default=str)
+        return Response(json_data, mimetype='application/json')
+    except Exception as e:
+        print(f"DEBUG ERROR [dashboard-stats]: {e}")
+        return Response(json.dumps({"error": "Internal Server Error", "message": str(e)}), status=500, mimetype='application/json')
+
 
 @app.route("/api/traffic-feed")
 def api_traffic_feed():
@@ -620,7 +647,25 @@ def profile():
 @app.route("/admin/users")
 @role_required("admin")
 def admin_users():
-    users = get_db().execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
+    db = get_db()
+    users_rows = db.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
+    
+    users = []
+    now = datetime.now()
+    for row in users_rows:
+        user = dict(row)
+        # Determine online status (active in last 5 minutes)
+        is_online = False
+        if user.get("last_active_at"):
+            try:
+                last_active = datetime.strptime(user["last_active_at"], "%Y-%m-%d %H:%M:%S")
+                if now - last_active < timedelta(minutes=5):
+                    is_online = True
+            except:
+                pass
+        user["is_online"] = is_online
+        users.append(user)
+        
     return render_template("admin_users.html", users=users, active_page="admin_users")
 
 @app.route("/admin/users/block/<username>")

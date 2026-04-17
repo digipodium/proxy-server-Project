@@ -4,7 +4,11 @@
 <div class="dashboard-container">
     <div class="dashboard-header">
         <div>
-            <p class="eyebrow">Control Center</p>
+            <p class="eyebrow" style="display: flex; align-items: center; gap: 8px;">
+                Control Center
+                <span class="live-pulse"></span>
+                <small style="text-transform: none; color: var(--accent-cyan); font-weight: 600; font-size: 10px; margin-left: -2px;">LIVE SYNC</small>
+            </p>
             <h2>Welcome, {{ username }}</h2>
         </div>
         {% if session.get('role') == 'admin' %}
@@ -257,24 +261,47 @@
             }
         });
 
-        // Simulate Real-time Data Animation Tracker
-        setInterval(() => {
-            const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            
-            // Push new Total Request dummy data point
-            totalChart.data.labels.push(timeLabel);
-            totalChart.data.labels.shift();
-            totalChart.data.datasets[0].data.push(Math.floor(Math.random() * (500 - 300 + 1) + 300));
-            totalChart.data.datasets[0].data.shift();
-            totalChart.update();
+        // True Real-time Data Sync
+        async function updateDashboardStats() {
+            try {
+                const response = await fetch('/api/dashboard-stats');
+                if (!response.ok) throw new Error('API failed');
+                
+                const stats = await response.json();
+                const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-            // Push new Blocked Request dummy data point
-            blockedReqChart.data.labels.push(timeLabel);
-            blockedReqChart.data.labels.shift();
-            blockedReqChart.data.datasets[0].data.push(Math.floor(Math.random() * (30 - 5 + 1) + 5));
-            blockedReqChart.data.datasets[0].data.shift();
-            blockedReqChart.update();
-        }, 4000);
+                // Update Total Requests Chart
+                totalChart.data.labels.push(timeLabel);
+                totalChart.data.labels.shift();
+                totalChart.data.datasets[0].data.push(stats.total_requests);
+                totalChart.data.datasets[0].data.shift();
+                totalChart.update();
+
+                // Update Blocked Requests Chart
+                blockedReqChart.data.labels.push(timeLabel);
+                blockedReqChart.data.labels.shift();
+                blockedReqChart.data.datasets[0].data.push(stats.blocked_requests);
+                blockedReqChart.data.datasets[0].data.shift();
+                blockedReqChart.update();
+
+                // Optional: Update registered users (Line chart)
+                if (usersChart.data.datasets[0].data[usersChart.data.datasets[0].data.length - 1] !== stats.active_users) {
+                    usersChart.data.labels.push(timeLabel);
+                    usersChart.data.labels.shift();
+                    usersChart.data.datasets[0].data.push(stats.active_users);
+                    usersChart.data.datasets[0].data.shift();
+                    usersChart.update();
+                }
+
+                console.log("Dashboard stats updated successfully.");
+            } catch (error) {
+                console.error('Real-time sync error:', error);
+            }
+        }
+
+        // Initial sync and then every 5 seconds
+        updateDashboardStats();
+        setInterval(updateDashboardStats, 5000);
     });
 </script>
 {% endif %}

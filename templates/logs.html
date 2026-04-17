@@ -4,7 +4,11 @@
 <div class="page-shell">
     <section class="page-hero">
         <div>
-            <p class="eyebrow">Logging and Reporting</p>
+            <p class="eyebrow" style="display: flex; align-items: center; gap: 8px;">
+                Logging and Reporting
+                <span class="live-pulse"></span>
+                <small style="text-transform: none; color: var(--accent-cyan); font-weight: 600; font-size: 10px; margin-left: -2px;">LIVE SYNC</small>
+            </p>
             <h2>Centralized activity logs for reporting, auditing, and control</h2>
             <p class="page-copy">
                 Review user actions, blocked access attempts, and policy data in one structured workspace.
@@ -223,6 +227,10 @@
 
         if (refreshBtn) {
             refreshBtn.addEventListener('click', updateSystemLogs);
+
+            // AUTO-POLLING: Refresh logs every 8 seconds
+            console.log("Auto-polling enabled for system logs (8s interval).");
+            setInterval(updateSystemLogs, 8000);
         } else {
             console.error("Refresh logs button not found in DOM!");
         }

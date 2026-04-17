@@ -4,7 +4,11 @@
 <div class="page-shell">
     <section class="page-hero">
         <div>
-            <p class="eyebrow">Traffic Monitoring</p>
+            <p class="eyebrow" style="display: flex; align-items: center; gap: 8px;">
+                Traffic Monitoring
+                <span class="live-pulse"></span>
+                <small style="text-transform: none; color: var(--accent-cyan); font-weight: 600; font-size: 10px; margin-left: -2px;">LIVE SYNC</small>
+            </p>
             <h2>Live proxy traffic visibility for smooth admin review</h2>
             <p class="page-copy">
                 Monitor request flow, bandwidth, protocol mix, and suspicious activity from one place.
@@ -230,6 +234,10 @@
 
         if (refreshBtn) {
             refreshBtn.addEventListener('click', updateTrafficFeed);
+            
+            // AUTO-POLLING: Refresh feed every 5 seconds
+            console.log("Auto-polling enabled for traffic feed (5s interval).");
+            setInterval(updateTrafficFeed, 5000);
         } else {
             console.error("Refresh button not found in DOM!");
         }

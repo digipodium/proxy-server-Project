@@ -1359,8 +1359,6 @@ th {
     color: rgba(255, 255, 255, 0.4);
 }
 
-}
-
 /* --- Role Selector & Conditional Fields --- */
 .role-group {
     margin-bottom: 24px;
@@ -1612,6 +1610,83 @@ th {
     align-items: center;
     justify-content: center;
     margin: 0 auto 24px;
+}
+
+/* --- Real-Time Indicators --- */
+.live-pulse {
+    width: 8px;
+    height: 8px;
+    background: #00f2ff;
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 0 0 rgba(0, 242, 255, 0.4);
+    animation: pulse 2s infinite;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-dot-online {
+    background: #2ecc71;
+    box-shadow: 0 0 0 rgba(46, 204, 113, 0.4);
+    animation: pulse-green 2s infinite;
+}
+
+.status-dot-offline {
+    background: #94a3b8;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(0, 242, 255, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 10px 10px rgba(0, 242, 255, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(0, 242, 255, 0);
+    }
+}
+
+@keyframes pulse-green {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 10px 10px rgba(46, 204, 113, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(46, 204, 113, 0);
+    }
+}
+
+/* --- Role Specific Pills & Connectivity --- */
+.pill-admin {
+    background: rgba(59, 130, 246, 0.1) !important;
+    color: #3b82f6 !important;
+}
+
+.pill-user {
+    background: rgba(100, 116, 139, 0.1) !important;
+    color: #64748b !important;
+}
+
+.text-online {
+    color: #2ecc71 !important;
+}
+
+.text-offline {
+    color: #94a3b8 !important;
 }
 
 

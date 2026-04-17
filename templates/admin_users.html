@@ -49,15 +49,23 @@
                             <small style="color: #64748b;">{{ user.email or 'No email provided' }}</small>
                         </td>
                         <td>
-                            <span class="pill" style="background: {% if user.role == 'admin' %}rgba(59, 130, 246, 0.1){% else %}rgba(100, 116, 139, 0.1){% endif %}; color: {% if user.role == 'admin' %}#3b82f6{% else %}#64748b{% endif %};">
+                            <span class="pill {% if user.role == 'admin' %}pill-admin{% else %}pill-user{% endif %}">
                                 {{ user.role|upper }}
                             </span>
                         </td>
                         <td>{{ user.created_at }}</td>
                         <td>
-                            <span class="pill pill-{{ 'allowed' if user.status == 'Active' else 'blocked' }}">
-                                {{ user.status or 'Active' }}
-                            </span>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="status-dot {% if user.is_online %}status-dot-online{% else %}status-dot-offline{% endif %}"></span>
+                                    <span style="font-size: 13px; font-weight: 500;" class="{% if user.is_online %}text-online{% else %}text-offline{% endif %}">
+                                        {{ 'Active' if user.is_online else 'Offline' }}
+                                    </span>
+                                </div>
+                                <span class="pill pill-{{ 'allowed' if user.status == 'Active' else 'blocked' }}" style="font-size: 10px; padding: 2px 8px; width: fit-content;">
+                                    {{ user.status or 'Active' }}
+                                </span>
+                            </div>
                         </td>
                         <td>
                             {% if user.username != session.get('user') %}
