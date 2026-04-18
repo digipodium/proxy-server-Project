@@ -41,9 +41,9 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="users-table-body">
                     {% for user in users %}
-                    <tr>
+                    <tr data-username="{{ user.username }}">
                         <td>
                             <strong>{{ user.username }}</strong><br>
                             <small style="color: #64748b;">{{ user.email or 'No email provided' }}</small>
@@ -54,7 +54,7 @@
                             </span>
                         </td>
                         <td>{{ user.created_at }}</td>
-                        <td>
+                        <td class="user-status-cell">
                             <div style="display: flex; align-items: center; gap: 6px;">
                                 <span class="status-dot {% if user.is_online %}status-dot-online{% else %}status-dot-offline{% endif %}"></span>
                                 <span style="font-size: 13px; font-weight: 500;" class="{% if user.is_online %}text-online{% else %}text-offline{% endif %}">
@@ -80,4 +80,40 @@
         </div>
     </section>
 </div>
+
+<script>
+async function syncUserStatus() {
+    try {
+        const res = await fetch('/api/user-status');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.users) return;
+
+        data.users.forEach(user => {
+            const row = document.querySelector(`tr[data-username="${CSS.escape(user.username)}"]`);
+            if (!row) return;
+            const cell = row.querySelector('.user-status-cell');
+            if (!cell) return;
+
+            const isOnline = user.is_online;
+            const dotClass = isOnline ? 'status-dot status-dot-online' : 'status-dot status-dot-offline';
+            const textClass = isOnline ? 'text-online' : 'text-offline';
+            const label = isOnline ? 'Active' : 'Offline';
+
+            cell.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span class="${dotClass}"></span>
+                    <span style="font-size: 13px; font-weight: 500;" class="${textClass}">${label}</span>
+                </div>`;
+        });
+    } catch (e) {
+        console.error('User status sync error:', e);
+    }
+}
+
+// Run immediately and then every 5 seconds
+syncUserStatus();
+setInterval(syncUserStatus, 5000);
+</script>
+
 {% endblock %}

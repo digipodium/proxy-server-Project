@@ -18,19 +18,19 @@
     </section>
 
     <section class="stats-grid">
-        <div class="stat-card">
+        <div class="stat-card" id="stat-total">
             <h3>Requests Observed</h3>
             <p>{{ summary.requests_today }}</p>
         </div>
-        <div class="stat-card success">
+        <div class="stat-card success" id="stat-allowed">
             <h3>Allowed Requests</h3>
             <p>{{ summary.allowed_count }}</p>
         </div>
-        <div class="stat-card danger">
+        <div class="stat-card danger" id="stat-blocked">
             <h3>Blocked Requests</h3>
             <p>{{ summary.blocked_count }}</p>
         </div>
-        <div class="stat-card warning">
+        <div class="stat-card warning" id="stat-bandwidth">
             <h3>Bandwidth</h3>
             <p>{{ summary.bandwidth_mb }} MB</p>
         </div>
@@ -44,7 +44,7 @@
                     <h3>HTTP / HTTPS usage</h3>
                 </div>
             </div>
-            <div class="metric-list">
+            <div class="metric-list" id="protocol-list">
                 {% for row in protocol_rows %}
                 <div class="metric-row">
                     <div>
@@ -88,7 +88,11 @@
     <section class="dashboard-panel dashboard-table-panel">
         <div class="panel-header">
             <div>
-                <p class="eyebrow">Traffic Analysis</p>
+                <p class="eyebrow" style="display: flex; align-items: center; gap: 8px;">
+                    Traffic Analysis
+                    <span class="live-pulse"></span>
+                    <small style="text-transform: none; color: var(--accent-cyan); font-weight: 600; font-size: 10px;">LIVE</small>
+                </p>
                 <h3>Top requested destinations</h3>
             </div>
         </div>
@@ -102,7 +106,7 @@
                         <th>Bandwidth</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="top-destinations-body">
                     {% for row in top_destinations %}
                     <tr>
                         <td>{{ display_host(row.url) }}</td>
@@ -161,44 +165,22 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const refreshBtn = document.getElementById('refresh-traffic-btn');
-        const tableBody = document.getElementById('traffic-feed-body');
+        const tableBody  = document.getElementById('traffic-feed-body');
+        const topBody    = document.getElementById('top-destinations-body');
+        const protoList  = document.getElementById('protocol-list');
 
+        // ── Traffic Feed ──────────────────────────────────────────────
         async function updateTrafficFeed() {
-            console.log("Manual refresh triggered for traffic feed.");
-            
-            // Visual feedback: Disable button and change text
             const originalText = refreshBtn.innerHTML;
             refreshBtn.disabled = true;
             refreshBtn.innerHTML = '<span class="spinner"></span> Refreshing...';
             refreshBtn.style.opacity = '0.7';
-            refreshBtn.style.cursor = 'not-allowed';
-
             try {
-                const response = await fetch('/api/traffic-feed');
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.log("SERVER ERROR PAGE CONTENT:", errorText);
-                    let errMsg = 'Server Error';
-                    try {
-                        const errJson = JSON.parse(errorText);
-                        errMsg = (errJson.message || errJson.error || errMsg);
-                        if (errJson.traceback) {
-                            console.error("PYTHON TRACEBACK:", errJson.traceback);
-                            errMsg += "\n\n(See browser console for details)";
-                        }
-                    } catch (e) {
-                        errMsg = "Server returned an HTML error. Please check your app.py terminal!";
-                    }
-                    throw new Error(errMsg);
-                }
-                
-                const data = await response.json();
-                
+                const res = await fetch('/api/traffic-feed');
+                if (!res.ok) throw new Error('Feed API error');
+                const data = await res.json();
                 if (data && data.length > 0) {
-                    let html = '';
-                    data.forEach(row => {
-                        html += `
+                    tableBody.innerHTML = data.map(row => `
                         <tr>
                             <td>${row.client_ip}</td>
                             <td>${row.proxy_ip}</td>
@@ -212,35 +194,64 @@
                                 <strong>${row.website_domain || (row.url.split('/')[2] || row.url)}</strong><br>
                                 <small class="ip-address">IP: ${row.target_ip}</small>
                             </td>
-                        </tr>
-                        `;
-                    });
-                    tableBody.innerHTML = html;
-                    console.log("Traffic feed successfully updated.");
-                } else {
-                    console.warn("No traffic data received.");
+                        </tr>`).join('');
                 }
-            } catch (error) {
-                console.error('Error fetching traffic feed:', error);
-                alert("Failed to refresh: " + error.message);
-            } finally {
-                // Restore button state
+            } catch (e) { console.error('Traffic feed error:', e); }
+            finally {
                 refreshBtn.disabled = false;
                 refreshBtn.innerHTML = originalText;
                 refreshBtn.style.opacity = '1';
-                refreshBtn.style.cursor = 'pointer';
             }
         }
 
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', updateTrafficFeed);
-            
-            // AUTO-POLLING: Refresh feed every 5 seconds
-            console.log("Auto-polling enabled for traffic feed (5s interval).");
-            setInterval(updateTrafficFeed, 5000);
-        } else {
-            console.error("Refresh button not found in DOM!");
+        // ── Summary + Top Destinations + Protocols ────────────────────
+        async function updateTrafficSummary() {
+            try {
+                const res = await fetch('/api/traffic-summary');
+                if (!res.ok) return;
+                const d = await res.json();
+
+                // Stat cards
+                if (d.summary) {
+                    document.querySelector('#stat-total p').textContent       = d.summary.requests_today;
+                    document.querySelector('#stat-allowed p').textContent     = d.summary.allowed_count;
+                    document.querySelector('#stat-blocked p').textContent     = d.summary.blocked_count;
+                    document.querySelector('#stat-bandwidth p').textContent   = d.summary.bandwidth_mb + ' MB';
+                }
+
+                // Top destinations table
+                if (d.top_destinations && topBody) {
+                    topBody.innerHTML = d.top_destinations.map(r => `
+                        <tr>
+                            <td>${r.destination}</td>
+                            <td><span class="pill pill-${r.status.toLowerCase()}">${r.status}</span></td>
+                            <td>${r.hits}</td>
+                            <td>${r.bandwidth_mb} MB</td>
+                        </tr>`).join('');
+                }
+
+                // Protocol breakdown
+                if (d.protocols && protoList) {
+                    protoList.innerHTML = d.protocols.map(r => `
+                        <div class="metric-row">
+                            <div>
+                                <strong>${r.protocol}</strong>
+                                <p>${r.request_count} requests</p>
+                            </div>
+                            <span>${r.bandwidth_mb} MB</span>
+                        </div>`).join('');
+                }
+            } catch (e) { console.error('Traffic summary error:', e); }
         }
+
+        // ── Boot ──────────────────────────────────────────────────────
+        if (refreshBtn) refreshBtn.addEventListener('click', updateTrafficFeed);
+
+        // Run immediately, then poll every 5 seconds
+        updateTrafficFeed();
+        updateTrafficSummary();
+        setInterval(updateTrafficFeed,    5000);
+        setInterval(updateTrafficSummary, 5000);
     });
 </script>
 {% endblock %}

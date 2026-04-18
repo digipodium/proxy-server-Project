@@ -19,9 +19,38 @@ DATABASE = DATA_DIR / "users.db"
 PROXY_HOST = "127.0.0.1"
 PROXY_PORT = 8888
 PROXY_PUBLIC_IP = "127.0.0.1"
+import time
 proxy_thread = None
 proxy_lock = Lock()
 ADMIN_REGISTRATION_PASSCODE = "PROXY_ADMIN_2024"
+
+# ---------------------------------------------------------------------------
+# In-memory active session registry
+# Key: username  |  Value: unix timestamp of last request
+# A user is considered ONLINE if their last ping is < 5 minutes ago.
+# ---------------------------------------------------------------------------
+_active_sessions: dict = {}
+_sessions_lock = Lock()
+ONLINE_THRESHOLD = 300  # seconds (5 minutes)
+
+def _ping_user(username: str):
+    """Record that this user just made a request."""
+    with _sessions_lock:
+        _active_sessions[username] = time.time()
+
+def _remove_user(username: str):
+    """Remove a user from the active registry (on logout)."""
+    with _sessions_lock:
+        _active_sessions.pop(username, None)
+
+def is_online(username: str) -> bool:
+    """Return True if the user has been active within ONLINE_THRESHOLD seconds."""
+    with _sessions_lock:
+        last = _active_sessions.get(username)
+    if last is None:
+        return False
+    return (time.time() - last) < ONLINE_THRESHOLD
+
 
 
 def ensure_data_dir():
@@ -413,10 +442,14 @@ def close_db(error):
 @app.before_request
 def update_last_active():
     if "user" in session:
+        username = session["user"]
+        # Update in-memory registry instantly
+        _ping_user(username)
+        # Also persist to DB for historical tracking
         db = get_db()
         db.execute(
             "UPDATE users SET last_active_at = ? WHERE username = ?",
-            (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), session["user"]),
+            (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), username),
         )
         db.commit()
 
@@ -434,6 +467,69 @@ def api_dashboard_stats():
     except Exception as e:
         print(f"DEBUG ERROR [dashboard-stats]: {e}")
         return Response(json.dumps({"error": "Internal Server Error", "message": str(e)}), status=500, mimetype='application/json')
+
+
+@app.route("/api/traffic-summary")
+def api_traffic_summary():
+    """Returns live traffic stats, top destinations, and protocol breakdown."""
+    try:
+        if "user" not in session:
+            return Response(json.dumps({"error": "Unauthorized"}), status=401, mimetype='application/json')
+        db = get_db()
+
+        allowed_count = db.execute("SELECT COUNT(*) AS c FROM logs WHERE status='Allowed'").fetchone()["c"]
+        blocked_count = db.execute("SELECT COUNT(*) AS c FROM logs WHERE status='Blocked'").fetchone()["c"]
+        total_bw = db.execute("SELECT COALESCE(SUM(bandwidth_kb),0) AS bw FROM logs").fetchone()["bw"]
+
+        summary = {
+            "requests_today": allowed_count + blocked_count,
+            "allowed_count": allowed_count,
+            "blocked_count": blocked_count,
+            "bandwidth_mb": round(total_bw / 1024, 2),
+        }
+
+        # Top destinations
+        top_rows = db.execute("""
+            SELECT website_domain, url, status,
+                   COUNT(*) AS hits,
+                   COALESCE(SUM(bandwidth_kb), 0) AS bandwidth_kb
+            FROM logs
+            GROUP BY website_domain, status
+            ORDER BY hits DESC, bandwidth_kb DESC
+            LIMIT 6
+        """).fetchall()
+        top_destinations = [
+            {
+                "destination": row["website_domain"] or row["url"],
+                "status": row["status"],
+                "hits": row["hits"],
+                "bandwidth_mb": round(row["bandwidth_kb"] / 1024, 2),
+            }
+            for row in top_rows
+        ]
+
+        # Protocol breakdown
+        proto_rows = db.execute("""
+            SELECT protocol, COUNT(*) AS request_count,
+                   COALESCE(SUM(bandwidth_kb), 0) AS bandwidth_kb
+            FROM logs GROUP BY protocol ORDER BY request_count DESC
+        """).fetchall()
+        protocols = [
+            {
+                "protocol": r["protocol"],
+                "request_count": r["request_count"],
+                "bandwidth_mb": round(r["bandwidth_kb"] / 1024, 2),
+            }
+            for r in proto_rows
+        ]
+
+        return Response(json.dumps({
+            "summary": summary,
+            "top_destinations": top_destinations,
+            "protocols": protocols,
+        }, default=str), mimetype='application/json')
+    except Exception as e:
+        return Response(json.dumps({"error": str(e)}), status=500, mimetype='application/json')
 
 
 @app.route("/api/traffic-feed")
@@ -495,6 +591,8 @@ def login():
             ).fetchone()
             session["user"] = user["username"]
             session["role"] = db_user["role"]
+            # Mark the user online immediately on login
+            _ping_user(user["username"])
             return redirect(url_for("dashboard"))
 
         flash("Invalid username or password")
@@ -665,24 +763,32 @@ def profile():
 def admin_users():
     db = get_db()
     users_rows = db.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
-    
     users = []
-    now = datetime.now()
     for row in users_rows:
         user = dict(row)
-        # Determine online status (active in last 5 minutes)
-        is_online = False
-        if user.get("last_active_at"):
-            try:
-                last_active = datetime.strptime(user["last_active_at"], "%Y-%m-%d %H:%M:%S")
-                if now - last_active < timedelta(minutes=5):
-                    is_online = True
-            except:
-                pass
-        user["is_online"] = is_online
+        # Use in-memory registry for instant accuracy
+        user["is_online"] = is_online(user["username"])
         users.append(user)
-        
     return render_template("admin_users.html", users=users, active_page="admin_users")
+
+@app.route("/api/user-status")
+@role_required("admin")
+def api_user_status():
+    """Returns real-time online status using in-memory session registry."""
+    try:
+        db = get_db()
+        rows = db.execute("SELECT username, status FROM users ORDER BY created_at DESC").fetchall()
+        result = [
+            {
+                "username": row["username"],
+                "is_online": is_online(row["username"]),  # instant, no DB lag
+                "status": row["status"]
+            }
+            for row in rows
+        ]
+        return Response(json.dumps({"users": result}), mimetype="application/json")
+    except Exception as e:
+        return Response(json.dumps({"error": str(e)}), status=500, mimetype="application/json")
 
 @app.route("/admin/users/block/<username>")
 @role_required("admin")
@@ -790,6 +896,9 @@ def logs():
 
 @app.route("/logout")
 def logout():
+    username = session.get("user")
+    if username:
+        _remove_user(username)   # Immediately mark offline
     session.pop("user", None)
     session.pop("role", None)
     return redirect(url_for("home"))

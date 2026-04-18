@@ -1541,11 +1541,48 @@ th {
     border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.sidebar-profile-features {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 8px;
+}
+
 .sidebar-user {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 10px;
+}
+
+.sidebar-feature-links {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sidebar-feature-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: 0.2s;
+}
+
+.sidebar-feature-link i {
+    width: 18px;
+}
+
+.sidebar-feature-link:hover,
+.sidebar-feature-link.active {
+    color: #ffffff;
+    background: rgba(59, 130, 246, 0.2);
+    text-decoration: none;
 }
 
 .sidebar-user .avatar {
@@ -1688,5 +1725,4 @@ th {
 .text-offline {
     color: #94a3b8 !important;
 }
-
 

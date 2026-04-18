@@ -64,11 +64,19 @@
             </nav>
 
             <div class="sidebar-footer">
-                <div class="sidebar-user">
-                    <div class="avatar">{{ session.get('user')[0]|upper }}</div>
-                    <div class="details">
-                        <strong>{{ session.get('user') }}</strong>
-                        <span>{{ session.get('role')|capitalize }} Account</span>
+                <div class="sidebar-profile-features">
+                    <div class="sidebar-user">
+                        <div class="avatar">{{ session.get('user')[0]|upper }}</div>
+                        <div class="details">
+                            <strong>{{ session.get('user') }}</strong>
+                            <span>{{ session.get('role')|capitalize }} Account</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-feature-links">
+                        <a href="{{ url_for('profile') }}" class="sidebar-feature-link {% if active_page == 'profile' %}active{% endif %}">
+                            <i data-lucide="user-circle-2"></i>
+                            My Profile
+                        </a>
                     </div>
                 </div>
                 <a href="{{ url_for('logout') }}" class="nav-item logout-link" style="margin-top: 10px;">
