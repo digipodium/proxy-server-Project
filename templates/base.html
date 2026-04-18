@@ -52,11 +52,11 @@
                     Configuration
                 </a>
                 {% else %}
-                <a href="{{ url_for('my_activity') }}" class="nav-item {% if active_page in ['my_activity', 'profile'] %}active{% endif %}">
+                <a href="/my-activity" class="nav-item {% if active_page in ['my_activity', 'profile'] %}active{% endif %}">
                     <i data-lucide="user"></i>
                     My Activity
                 </a>
-                <a href="{{ url_for('user_blocked_sites') }}" class="nav-item {% if active_page == 'user_blocked_sites' %}active{% endif %}">
+                <a href="/blocked-sites" class="nav-item {% if active_page == 'user_blocked_sites' %}active{% endif %}">
                     <i data-lucide="slash"></i>
                     Blocked Sites
                 </a>
