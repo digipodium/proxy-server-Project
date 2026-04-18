@@ -95,12 +95,15 @@
     <div class="dashboard-panel dashboard-table-panel">
         <div class="panel-header">
             <div>
-                <p class="eyebrow">Admin Overview</p>
+                <p class="eyebrow" style="display: flex; align-items: center; gap: 8px;">
+                    Admin Overview
+                    <span class="live-pulse"></span>
+                    <small style="text-transform: none; color: var(--accent-cyan); font-weight: 600; font-size: 10px;">LIVE</small>
+                </p>
                 <h3>Recent Users</h3>
             </div>
         </div>
 
-        {% if latest_users %}
         <div class="table-container">
             <table>
                 <thead>
@@ -110,20 +113,26 @@
                         <th>Status</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="recent-users-body">
                     {% for user in latest_users %}
                     <tr>
                         <td>{{ user.username }}</td>
                         <td>{{ user.created_at }}</td>
-                        <td><span class="pill pill-allowed">Active</span></td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span class="status-dot {% if user.is_online %}status-dot-online{% else %}status-dot-offline{% endif %}"></span>
+                                <span class="{% if user.is_online %}text-online{% else %}text-offline{% endif %}" style="font-size: 13px; font-weight: 500;">
+                                    {{ 'Active' if user.is_online else 'Offline' }}
+                                </span>
+                            </div>
+                        </td>
                     </tr>
+                    {% else %}
+                    <tr><td colspan="3" class="empty">No users registered yet.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        {% else %}
-            <p class="empty">No users registered yet.</p>
-        {% endif %}
     </div>
     {% else %}
     <div class="dashboard-panel dashboard-table-panel">
@@ -266,7 +275,7 @@
             try {
                 const response = await fetch('/api/dashboard-stats');
                 if (!response.ok) throw new Error('API failed');
-                
+
                 const stats = await response.json();
                 const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
@@ -284,13 +293,34 @@
                 blockedReqChart.data.datasets[0].data.shift();
                 blockedReqChart.update();
 
-                // Optional: Update registered users (Line chart)
+                // Update registered users chart
                 if (usersChart.data.datasets[0].data[usersChart.data.datasets[0].data.length - 1] !== stats.active_users) {
                     usersChart.data.labels.push(timeLabel);
                     usersChart.data.labels.shift();
                     usersChart.data.datasets[0].data.push(stats.active_users);
                     usersChart.data.datasets[0].data.shift();
                     usersChart.update();
+                }
+
+                // --- Live update Recent Users table ---
+                const tbody = document.getElementById('recent-users-body');
+                if (tbody && stats.latest_users && stats.latest_users.length > 0) {
+                    tbody.innerHTML = stats.latest_users.map(user => {
+                        const isOnline = user.is_online;
+                        const dotClass = isOnline ? 'status-dot status-dot-online' : 'status-dot status-dot-offline';
+                        const textClass = isOnline ? 'text-online' : 'text-offline';
+                        const label = isOnline ? 'Active' : 'Offline';
+                        return `<tr>
+                            <td>${user.username}</td>
+                            <td>${user.created_at}</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="${dotClass}"></span>
+                                    <span class="${textClass}" style="font-size: 13px; font-weight: 500;">${label}</span>
+                                </div>
+                            </td>
+                        </tr>`;
+                    }).join('');
                 }
 
                 console.log("Dashboard stats updated successfully.");

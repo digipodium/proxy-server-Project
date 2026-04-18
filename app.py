@@ -165,15 +165,31 @@ def get_overview_data():
         "SELECT COUNT(*) AS count FROM logs WHERE status = 'Blocked'"
     ).fetchone()["count"]
     blocked_sites = db.execute("SELECT COUNT(*) AS count FROM blocked_sites").fetchone()["count"]
-    latest_users = db.execute(
-        "SELECT username, created_at FROM users ORDER BY id DESC LIMIT 5"
+    latest_users_rows = db.execute(
+        "SELECT username, created_at, last_active_at FROM users ORDER BY id DESC LIMIT 5"
     ).fetchall()
+
+    latest_users = []
+    now = datetime.now()
+    for row in latest_users_rows:
+        user = dict(row)
+        is_online = False
+        if user.get("last_active_at"):
+            try:
+                last_active = datetime.strptime(user["last_active_at"], "%Y-%m-%d %H:%M:%S")
+                if now - last_active < timedelta(minutes=5):
+                    is_online = True
+            except:
+                pass
+        user["is_online"] = is_online
+        latest_users.append(user)
 
     stats = {
         "total_requests": total_requests,
         "blocked_requests": blocked_requests,
         "active_users": total_users,
         "blocked_sites": blocked_sites,
+        "latest_users": latest_users
     }
     return stats, latest_users
 

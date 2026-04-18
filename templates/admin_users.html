@@ -55,15 +55,10 @@
                         </td>
                         <td>{{ user.created_at }}</td>
                         <td>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span class="status-dot {% if user.is_online %}status-dot-online{% else %}status-dot-offline{% endif %}"></span>
-                                    <span style="font-size: 13px; font-weight: 500;" class="{% if user.is_online %}text-online{% else %}text-offline{% endif %}">
-                                        {{ 'Active' if user.is_online else 'Offline' }}
-                                    </span>
-                                </div>
-                                <span class="pill pill-{{ 'allowed' if user.status == 'Active' else 'blocked' }}" style="font-size: 10px; padding: 2px 8px; width: fit-content;">
-                                    {{ user.status or 'Active' }}
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span class="status-dot {% if user.is_online %}status-dot-online{% else %}status-dot-offline{% endif %}"></span>
+                                <span style="font-size: 13px; font-weight: 500;" class="{% if user.is_online %}text-online{% else %}text-offline{% endif %}">
+                                    {{ 'Active' if user.is_online else 'Offline' }}
                                 </span>
                             </div>
                         </td>
