@@ -87,5 +87,25 @@
             {% endif %}
         </article>
     </section>
+
+    <section class="dashboard-panel dashboard-table-panel">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">My Security</p>
+                <h3>Safe Browsing Status</h3>
+            </div>
+        </div>
+        {% set safe = stats.safe_status if stats is defined and stats.safe_status is defined else {
+            'icon': 'shield',
+            'color': '#64748b',
+            'state': 'No Activity Yet',
+            'message': 'No browsing activity is available yet for this account.'
+        } %}
+        <div style="padding: 20px; text-align: center;">
+            <i data-lucide="{{ safe.icon }}" style="color: {{ safe.color }}; width: 48px; height: 48px; margin-bottom: 15px;"></i>
+            <p style="font-size: 20px; font-weight: 700; margin: 0 0 10px; color: #1e293b;">{{ safe.state }}</p>
+            <p style="font-size: 16px; color: #64748b;">{{ safe.message }}</p>
+        </div>
+    </section>
 </div>
 {% endblock %}

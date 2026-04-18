@@ -186,17 +186,65 @@ def seed_demo_data(db):
     db.commit()
 
 
-def get_overview_data():
+def get_overview_data(for_username=None, role="admin"):
     db = get_db()
-    total_users = db.execute("SELECT COUNT(*) AS count FROM users").fetchone()["count"]
-    total_requests = db.execute("SELECT COUNT(*) AS count FROM logs").fetchone()["count"]
-    blocked_requests = db.execute(
-        "SELECT COUNT(*) AS count FROM logs WHERE status = 'Blocked'"
-    ).fetchone()["count"]
-    blocked_sites = db.execute("SELECT COUNT(*) AS count FROM blocked_sites").fetchone()["count"]
-    latest_users_rows = db.execute(
-        "SELECT username, created_at, last_active_at FROM users ORDER BY id DESC LIMIT 5"
-    ).fetchall()
+    is_admin = role == "admin"
+
+    if is_admin:
+        total_users = db.execute("SELECT COUNT(*) AS count FROM users").fetchone()["count"]
+        total_requests = db.execute("SELECT COUNT(*) AS count FROM logs").fetchone()["count"]
+        blocked_requests = db.execute(
+            "SELECT COUNT(*) AS count FROM logs WHERE status = 'Blocked'"
+        ).fetchone()["count"]
+        blocked_sites = db.execute("SELECT COUNT(*) AS count FROM blocked_sites").fetchone()["count"]
+        allowed_requests = db.execute(
+            "SELECT COUNT(*) AS count FROM logs WHERE status = 'Allowed'"
+        ).fetchone()["count"]
+        security_alerts = db.execute(
+            "SELECT COUNT(*) AS count FROM logs WHERE threat_level IN ('High', 'Critical')"
+        ).fetchone()["count"]
+        total_bandwidth_kb = db.execute(
+            "SELECT COALESCE(SUM(bandwidth_kb), 0) AS total FROM logs"
+        ).fetchone()["total"]
+        latest_users_rows = db.execute(
+            "SELECT username, created_at, last_active_at FROM users ORDER BY id DESC LIMIT 5"
+        ).fetchall()
+    else:
+        total_users = 1
+        total_requests = db.execute(
+            "SELECT COUNT(*) AS count FROM logs WHERE username = ?",
+            (for_username,),
+        ).fetchone()["count"]
+        blocked_requests = db.execute(
+            "SELECT COUNT(*) AS count FROM logs WHERE username = ? AND status = 'Blocked'",
+            (for_username,),
+        ).fetchone()["count"]
+        allowed_requests = db.execute(
+            "SELECT COUNT(*) AS count FROM logs WHERE username = ? AND status = 'Allowed'",
+            (for_username,),
+        ).fetchone()["count"]
+        # Real blocked sites faced by this user (distinct domains in blocked logs)
+        blocked_sites = db.execute(
+            """
+            SELECT COUNT(DISTINCT COALESCE(NULLIF(website_domain, ''), url)) AS count
+            FROM logs
+            WHERE username = ? AND status = 'Blocked'
+            """,
+            (for_username,),
+        ).fetchone()["count"]
+        security_alerts = db.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM logs
+            WHERE username = ? AND threat_level IN ('High', 'Critical')
+            """,
+            (for_username,),
+        ).fetchone()["count"]
+        total_bandwidth_kb = db.execute(
+            "SELECT COALESCE(SUM(bandwidth_kb), 0) AS total FROM logs WHERE username = ?",
+            (for_username,),
+        ).fetchone()["total"]
+        latest_users_rows = []
 
     latest_users = []
     now = datetime.now()
@@ -213,11 +261,46 @@ def get_overview_data():
         user["is_online"] = is_online
         latest_users.append(user)
 
+    if total_requests == 0:
+        safe_status = {
+            "state": "No Activity Yet",
+            "icon": "shield",
+            "color": "#64748b",
+            "message": "No browsing activity logged yet for your account. Start browsing through the proxy to see live protection stats.",
+        }
+    else:
+        blocked_ratio = (blocked_requests / total_requests) * 100
+        if blocked_ratio <= 5 and security_alerts == 0:
+            safe_status = {
+                "state": "Safe",
+                "icon": "check-circle",
+                "color": "#2ecc71",
+                "message": "Your recent traffic looks safe. Requests are being monitored and filtered in real time.",
+            }
+        elif blocked_ratio <= 20 and security_alerts <= 3:
+            safe_status = {
+                "state": "Caution",
+                "icon": "shield-alert",
+                "color": "#f59e0b",
+                "message": "Some risky requests were blocked. Continue browsing carefully and avoid unknown links or downloads.",
+            }
+        else:
+            safe_status = {
+                "state": "Risk Detected",
+                "icon": "alert-triangle",
+                "color": "#ef4444",
+                "message": "Multiple risky attempts were detected and blocked. Please review your recent browsing destinations.",
+            }
+
     stats = {
         "total_requests": total_requests,
         "blocked_requests": blocked_requests,
+        "allowed_requests": allowed_requests,
+        "security_alerts": security_alerts,
         "active_users": total_users,
         "blocked_sites": blocked_sites,
+        "bandwidth_mb": round((total_bandwidth_kb or 0) / 1024, 2),
+        "safe_status": safe_status,
         "latest_users": latest_users
     }
     return stats, latest_users
@@ -460,7 +543,10 @@ def api_dashboard_stats():
         if "user" not in session:
             return Response(json.dumps({"error": "Unauthorized"}), status=401, mimetype='application/json')
         
-        stats, _ = get_overview_data()
+        stats, _ = get_overview_data(
+            for_username=session.get("user"),
+            role=session.get("role", "user"),
+        )
         # Bulletproof manual serialization
         json_data = json.dumps(stats, default=str)
         return Response(json_data, mimetype='application/json')
@@ -716,7 +802,8 @@ def dashboard():
             return redirect(url_for("login"))
 
         ensure_proxy_server()
-        stats, latest_users = get_overview_data()
+        role = session.get("role", "user")
+        stats, latest_users = get_overview_data(for_username=session["user"], role=role)
 
         return render_template(
             "dashboard.html",
@@ -738,6 +825,20 @@ def profile():
         return redirect(url_for("login"))
 
     user = get_current_user()
+    try:
+        stats, _ = get_overview_data(
+            for_username=session["user"],
+            role=session.get("role", "user"),
+        )
+    except Exception:
+        stats = {
+            "safe_status": {
+                "icon": "shield",
+                "color": "#64748b",
+                "state": "No Activity Yet",
+                "message": "No browsing activity is available yet for this account.",
+            }
+        }
     recent_activity = get_db().execute(
         """
         SELECT url, status, requested_at
@@ -752,9 +853,60 @@ def profile():
         "profile.html",
         username=session["user"],
         user=user,
+        stats=stats,
         recent_activity=recent_activity,
         display_host=display_host,
         active_page="profile",
+    )
+
+
+@app.route("/my-activity")
+@app.route("/my-activity/")
+@app.route("/activity")
+@app.route("/myactivity")
+@app.route("/my_activity")
+def my_activity():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    fallback_stats = {
+        "safe_status": {
+            "icon": "shield",
+            "color": "#64748b",
+            "state": "No Activity Yet",
+            "message": "No browsing activity is available yet for this account.",
+        }
+    }
+
+    try:
+        stats, _ = get_overview_data(
+            for_username=session["user"],
+            role=session.get("role", "user"),
+        )
+    except Exception:
+        stats = fallback_stats
+
+    try:
+        recent_activity = get_db().execute(
+            """
+            SELECT url, status, requested_at
+            FROM logs
+            WHERE username = ?
+            ORDER BY requested_at DESC
+            LIMIT 10
+            """,
+            (session["user"],),
+        ).fetchall()
+    except Exception:
+        recent_activity = []
+
+    return render_template(
+        "my_activity.html",
+        username=session["user"],
+        recent_activity=recent_activity,
+        stats=stats,
+        display_host=display_host,
+        active_page="my_activity",
     )
 
 
@@ -832,6 +984,35 @@ def remove_blocked_site(id):
     db.commit()
     flash("Site unblocked successfully.")
     return redirect(url_for("admin_blocked_sites"))
+
+
+@app.route("/blocked-sites", endpoint="user_blocked_sites")
+@app.route("/blocked-sites/")
+@app.route("/blockedsites")
+def user_blocked_sites():
+    """User-facing blocked sites page (read-only firewall rules view)."""
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    # Keep admin behavior unchanged: admins should use the admin firewall page.
+    if session.get("role") == "admin":
+        return redirect(url_for("admin_blocked_sites"))
+
+    db = get_db()
+    sites = db.execute(
+        """
+        SELECT url, reason, created_at
+        FROM blocked_sites
+        ORDER BY created_at DESC
+        """
+    ).fetchall()
+
+    return render_template(
+        "user_blocked_sites.html",
+        username=session.get("user"),
+        sites=sites,
+        active_page="user_blocked_sites",
+    )
 
 @app.route("/settings")
 def settings():

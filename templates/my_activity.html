@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-shell">
+    <section class="page-hero">
+        <div>
+            <p class="eyebrow">My Activity</p>
+            <h2>Security activity for {{ username }}</h2>
+            <p class="page-copy">
+                Review your recent requests and current safe browsing status.
+            </p>
+        </div>
+    </section>
+
+    <section class="stats-grid">
+        <article class="stat-card">
+            <h3>Total Requests</h3>
+            <p>{{ stats.total_requests if stats is defined and stats.total_requests is defined else 0 }}</p>
+        </article>
+        <article class="stat-card success">
+            <h3>Allowed Requests</h3>
+            <p>{{ stats.allowed_requests if stats is defined and stats.allowed_requests is defined else 0 }}</p>
+        </article>
+        <article class="stat-card danger">
+            <h3>Blocked Requests</h3>
+            <p>{{ stats.blocked_requests if stats is defined and stats.blocked_requests is defined else 0 }}</p>
+        </article>
+        <article class="stat-card warning">
+            <h3>Blocked Sites</h3>
+            <p>{{ stats.blocked_sites if stats is defined and stats.blocked_sites is defined else 0 }}</p>
+        </article>
+    </section>
+
+    <section class="dashboard-panel dashboard-table-panel">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">Recent Activity</p>
+                <h3>Latest requests by this user</h3>
+            </div>
+        </div>
+        {% if recent_activity %}
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Destination</th>
+                        <th>Status</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in recent_activity %}
+                    <tr>
+                        <td>{{ display_host(row.url) if display_host is defined else row.url }}</td>
+                        <td><span class="pill pill-{{ (row.status|default('Allowed'))|lower }}">{{ row.status|default('Allowed') }}</span></td>
+                        <td>{{ row.requested_at|default('N/A') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty">No activity found for this user yet.</p>
+        {% endif %}
+    </section>
+
+    <section class="dashboard-panel dashboard-table-panel">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">My Security</p>
+                <h3>Safe Browsing Status</h3>
+            </div>
+        </div>
+        {% set safe = stats.safe_status if stats is defined and stats.safe_status is defined else {
+            'icon': 'shield',
+            'color': '#64748b',
+            'state': 'No Activity Yet',
+            'message': 'No browsing activity is available yet for this account.'
+        } %}
+        <div style="padding: 20px; text-align: center;">
+            <i data-lucide="{{ safe.icon }}" style="color: {{ safe.color }}; width: 48px; height: 48px; margin-bottom: 15px;"></i>
+            <p style="font-size: 20px; font-weight: 700; margin: 0 0 10px; color: #1e293b;">{{ safe.state }}</p>
+            <p style="font-size: 16px; color: #64748b;">{{ safe.message }}</p>
+        </div>
+    </section>
+</div>
+{% endblock %}

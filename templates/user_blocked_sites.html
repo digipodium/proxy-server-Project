@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-shell">
+    <section class="page-hero">
+        <div>
+            <p class="eyebrow">Firewall</p>
+            <h2>Blocked Sites</h2>
+            <p class="page-copy">
+                Active blocking rules currently enforced by the proxy firewall.
+            </p>
+        </div>
+    </section>
+
+    <article class="dashboard-panel dashboard-table-panel" style="margin: 0;">
+            <div class="panel-header">
+                <div>
+                    <p class="eyebrow">Firewall</p>
+                    <h3>Active Blocking Rules</h3>
+                </div>
+            </div>
+            {% if sites %}
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Destination</th>
+                            <th>Policy Reason</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for site in sites %}
+                        <tr>
+                            <td><strong>{{ site.url }}</strong></td>
+                            <td>{{ site.reason }}</td>
+                            <td>{{ site.created_at }}</td>
+                            <td>
+                                <a href="{{ url_for('remove_blocked_site', id=site.id) }}" style="color: #ef4444; font-size: 13px; font-weight: 600;">Remove Rule</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="empty" style="padding: 40px;">No custom blocking rules defined.</p>
+            {% endif %}
+        </article>
+</div>
+{% endblock %}

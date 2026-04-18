@@ -66,6 +66,50 @@
             </div>
         </div>
     </div>
+    {% else %}
+    <div class="panel-header" style="margin-top: 10px;">
+        <div>
+            <p class="eyebrow">Traffic Analytics</p>
+        </div>
+    </div>
+    <section class="stats-grid">
+        <article class="stat-card">
+            <h3>Total Requests</h3>
+            <p>{{ stats.total_requests }}</p>
+        </article>
+        <article class="stat-card success">
+            <h3>Allowed Requests</h3>
+            <p>{{ stats.allowed_requests }}</p>
+        </article>
+        <article class="stat-card danger">
+            <h3>Blocked Requests</h3>
+            <p>{{ stats.blocked_requests }}</p>
+        </article>
+        <article class="stat-card warning">
+            <h3>Bandwidth (MB)</h3>
+            <p>{{ stats.bandwidth_mb }}</p>
+        </article>
+    </section>
+
+    <div class="panel-header" style="margin-top: 10px;">
+        <div>
+            <p class="eyebrow">Security Insights</p>
+        </div>
+    </div>
+    <section class="stats-grid">
+        <article class="stat-card danger">
+            <h3>Blocked Requests</h3>
+            <p>{{ stats.blocked_requests }}</p>
+        </article>
+        <article class="stat-card warning">
+            <h3>Blocked Sites</h3>
+            <p>{{ stats.blocked_sites }}</p>
+        </article>
+        <article class="stat-card">
+            <h3>Security Alerts</h3>
+            <p>{{ stats.security_alerts }}</p>
+        </article>
+    </section>
     {% endif %}
 
     <div class="dashboard-panel dashboard-table-panel">
@@ -132,19 +176,6 @@
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-    </div>
-    {% else %}
-    <div class="dashboard-panel dashboard-table-panel">
-        <div class="panel-header">
-            <div>
-                <p class="eyebrow">My Security</p>
-                <h3>Safe Browsing Status</h3>
-            </div>
-        </div>
-        <div style="padding: 20px; text-align: center;">
-            <i data-lucide="check-circle" style="color: #2ecc71; width: 48px; height: 48px; margin-bottom: 15px;"></i>
-            <p style="font-size: 16px; color: #64748b;">Your connection is currently being monitored for security. All requests are filtered through the Smart Proxy Server.</p>
         </div>
     </div>
     {% endif %}
