@@ -310,17 +310,21 @@ def get_traffic_data():
     db = get_db()
     protocol_rows = db.execute(
         """
-        SELECT protocol, COUNT(*) AS request_count, COALESCE(SUM(bandwidth_kb), 0) AS bandwidth_kb
-        FROM logs
-        GROUP BY protocol
+        SELECT l.protocol, COUNT(*) AS request_count, COALESCE(SUM(l.bandwidth_kb), 0) AS bandwidth_kb
+        FROM logs l
+        LEFT JOIN users u ON u.username = l.username
+        WHERE COALESCE(u.role, 'user') = 'user'
+        GROUP BY l.protocol
         ORDER BY request_count DESC
         """
     ).fetchall()
     top_destinations = db.execute(
         """
-        SELECT url, status, COUNT(*) AS hits, COALESCE(SUM(bandwidth_kb), 0) AS bandwidth_kb
-        FROM logs
-        GROUP BY url, status
+        SELECT l.url, l.status, COUNT(*) AS hits, COALESCE(SUM(l.bandwidth_kb), 0) AS bandwidth_kb
+        FROM logs l
+        LEFT JOIN users u ON u.username = l.username
+        WHERE COALESCE(u.role, 'user') = 'user'
+        GROUP BY l.url, l.status
         ORDER BY hits DESC, bandwidth_kb DESC
         LIMIT 6
         """
@@ -328,40 +332,53 @@ def get_traffic_data():
     traffic_feed_rows = db.execute(
         """
         SELECT
-            username,
-            client_ip,
-            proxy_ip,
-            url,
-            website_domain,
-            target_ip,
-            method,
-            protocol,
-            status,
-            threat_level,
-            bandwidth_kb,
-            requested_at,
-            strftime('%H:%M:%S', requested_at) AS request_time
-        FROM logs
-        ORDER BY requested_at DESC
+            l.username,
+            l.client_ip,
+            l.proxy_ip,
+            l.url,
+            l.website_domain,
+            l.target_ip,
+            l.method,
+            l.protocol,
+            l.status,
+            l.threat_level,
+            l.bandwidth_kb,
+            l.requested_at,
+            strftime('%H:%M:%S', l.requested_at) AS request_time
+        FROM logs l
+        LEFT JOIN users u ON u.username = l.username
+        WHERE COALESCE(u.role, 'user') = 'user'
+        ORDER BY l.requested_at DESC
         LIMIT 10
         """
     ).fetchall()
     recent_alerts = db.execute(
         """
-        SELECT username, url, threat_level, requested_at
-        FROM logs
-        WHERE status = 'Blocked'
-        ORDER BY requested_at DESC
+        SELECT l.username, l.url, l.threat_level, l.requested_at
+        FROM logs l
+        LEFT JOIN users u ON u.username = l.username
+        WHERE COALESCE(u.role, 'user') = 'user' AND l.status = 'Blocked'
+        ORDER BY l.requested_at DESC
         LIMIT 5
         """
     ).fetchall()
 
     total_bandwidth = sum(row["bandwidth_kb"] for row in protocol_rows)
     allowed_count = db.execute(
-        "SELECT COUNT(*) AS count FROM logs WHERE status = 'Allowed'"
+        """
+        SELECT COUNT(*) AS count
+        FROM logs l
+        LEFT JOIN users u ON u.username = l.username
+        WHERE COALESCE(u.role, 'user') = 'user' AND l.status = 'Allowed'
+        """
     ).fetchone()["count"]
     blocked_count = db.execute(
-        "SELECT COUNT(*) AS count FROM logs WHERE status = 'Blocked'"
+        """
+        SELECT COUNT(*) AS count
+        FROM logs l
+        LEFT JOIN users u ON u.username = l.username
+        WHERE COALESCE(u.role, 'user') = 'user' AND l.status = 'Blocked'
+        """
     ).fetchone()["count"]
 
     summary = {
@@ -403,18 +420,21 @@ def get_logs_data():
     db = get_db()
     system_logs = db.execute(
         """
-        SELECT username, url, method, protocol, status, threat_level, bandwidth_kb, requested_at
-        FROM logs
-        ORDER BY requested_at DESC
+        SELECT l.username, l.url, l.method, l.protocol, l.status, l.threat_level, l.bandwidth_kb, l.requested_at
+        FROM logs l
+        LEFT JOIN users u ON u.username = l.username
+        WHERE COALESCE(u.role, 'user') = 'user'
+        ORDER BY l.requested_at DESC
         LIMIT 14
         """
     ).fetchall()
     blocked_activity = db.execute(
         """
-        SELECT username, url, threat_level, requested_at
-        FROM logs
-        WHERE status = 'Blocked'
-        ORDER BY requested_at DESC
+        SELECT l.username, l.url, l.threat_level, l.requested_at
+        FROM logs l
+        LEFT JOIN users u ON u.username = l.username
+        WHERE COALESCE(u.role, 'user') = 'user' AND l.status = 'Blocked'
+        ORDER BY l.requested_at DESC
         LIMIT 8
         """
     ).fetchall()
@@ -428,21 +448,40 @@ def get_logs_data():
     ).fetchall()
     activity_by_user = db.execute(
         """
-        SELECT username, COUNT(*) AS total_events
-        FROM logs
-        GROUP BY username
-        ORDER BY total_events DESC, username ASC
+        SELECT l.username AS username, COUNT(*) AS total_events
+        FROM logs l
+        LEFT JOIN users u ON u.username = l.username
+        WHERE COALESCE(u.role, 'user') = 'user'
+        GROUP BY l.username
+        ORDER BY total_events DESC, 1 ASC
         LIMIT 6
         """
     ).fetchall()
 
     metrics = {
-        "total_events": db.execute("SELECT COUNT(*) AS count FROM logs").fetchone()["count"],
+        "total_events": db.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM logs l
+            LEFT JOIN users u ON u.username = l.username
+            WHERE COALESCE(u.role, 'user') = 'user'
+            """
+        ).fetchone()["count"],
         "security_alerts": db.execute(
-            "SELECT COUNT(*) AS count FROM logs WHERE threat_level IN ('High', 'Critical')"
+            """
+            SELECT COUNT(*) AS count
+            FROM logs l
+            LEFT JOIN users u ON u.username = l.username
+            WHERE COALESCE(u.role, 'user') = 'user' AND l.threat_level IN ('High', 'Critical')
+            """
         ).fetchone()["count"],
         "blocked_events": db.execute(
-            "SELECT COUNT(*) AS count FROM logs WHERE status = 'Blocked'"
+            """
+            SELECT COUNT(*) AS count
+            FROM logs l
+            LEFT JOIN users u ON u.username = l.username
+            WHERE COALESCE(u.role, 'user') = 'user' AND l.status = 'Blocked'
+            """
         ).fetchone()["count"],
         "policy_rules": db.execute("SELECT COUNT(*) AS count FROM blocked_sites").fetchone()["count"],
     }
@@ -561,52 +600,23 @@ def api_traffic_summary():
     try:
         if "user" not in session:
             return Response(json.dumps({"error": "Unauthorized"}), status=401, mimetype='application/json')
-        db = get_db()
-
-        allowed_count = db.execute("SELECT COUNT(*) AS c FROM logs WHERE status='Allowed'").fetchone()["c"]
-        blocked_count = db.execute("SELECT COUNT(*) AS c FROM logs WHERE status='Blocked'").fetchone()["c"]
-        total_bw = db.execute("SELECT COALESCE(SUM(bandwidth_kb),0) AS bw FROM logs").fetchone()["bw"]
-
-        summary = {
-            "requests_today": allowed_count + blocked_count,
-            "allowed_count": allowed_count,
-            "blocked_count": blocked_count,
-            "bandwidth_mb": round(total_bw / 1024, 2),
-        }
-
-        # Top destinations
-        top_rows = db.execute("""
-            SELECT website_domain, url, status,
-                   COUNT(*) AS hits,
-                   COALESCE(SUM(bandwidth_kb), 0) AS bandwidth_kb
-            FROM logs
-            GROUP BY website_domain, status
-            ORDER BY hits DESC, bandwidth_kb DESC
-            LIMIT 6
-        """).fetchall()
+        summary, protocol_rows, top_rows, _, _ = get_traffic_data()
         top_destinations = [
             {
-                "destination": row["website_domain"] or row["url"],
+                "destination": display_host(row["url"]),
                 "status": row["status"],
                 "hits": row["hits"],
                 "bandwidth_mb": round(row["bandwidth_kb"] / 1024, 2),
             }
             for row in top_rows
         ]
-
-        # Protocol breakdown
-        proto_rows = db.execute("""
-            SELECT protocol, COUNT(*) AS request_count,
-                   COALESCE(SUM(bandwidth_kb), 0) AS bandwidth_kb
-            FROM logs GROUP BY protocol ORDER BY request_count DESC
-        """).fetchall()
         protocols = [
             {
-                "protocol": r["protocol"],
-                "request_count": r["request_count"],
-                "bandwidth_mb": round(r["bandwidth_kb"] / 1024, 2),
+                "protocol": row["protocol"],
+                "request_count": row["request_count"],
+                "bandwidth_mb": round(row["bandwidth_kb"] / 1024, 2),
             }
-            for r in proto_rows
+            for row in protocol_rows
         ]
 
         return Response(json.dumps({
@@ -1091,3 +1101,4 @@ init_db()
 if __name__ == "__main__":
     ensure_proxy_server()
     app.run(debug=True, use_reloader=False)
+
