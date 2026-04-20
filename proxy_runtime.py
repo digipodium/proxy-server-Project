@@ -80,6 +80,27 @@ def client_identity(address):
     return f"client@{address[0]}"
 
 
+def resolve_username_from_client_ip(database_path, client_ip):
+    try:
+        with closing(open_db(database_path)) as db:
+            row = db.execute(
+                """
+                SELECT username
+                FROM client_sessions
+                WHERE client_ip = ?
+                  AND last_seen >= datetime('now', '-12 hours')
+                ORDER BY last_seen DESC
+                LIMIT 1
+                """,
+                (client_ip,),
+            ).fetchone()
+            if row and row["username"]:
+                return str(row["username"])
+    except sqlite3.Error:
+        return None
+    return None
+
+
 def domain_from_url(url):
     parsed = urlparse(url)
     return parsed.netloc or url
@@ -162,7 +183,7 @@ def handle_https(client_socket, address, first_line, database_path):
 
     blocked_rule = match_blocked_host(host, get_blocked_rules(database_path))
     client_ip = address[0]
-    username = client_identity(address)
+    username = resolve_username_from_client_ip(database_path, client_ip) or client_identity(address)
     url = f"https://{host}:{port}"
     website_domain = host
 
@@ -210,7 +231,7 @@ def handle_http(client_socket, address, request_bytes, first_line, database_path
 
     blocked_rule = match_blocked_host(host, get_blocked_rules(database_path))
     client_ip = address[0]
-    username = client_identity(address)
+    username = resolve_username_from_client_ip(database_path, client_ip) or client_identity(address)
     website_domain = domain_from_url(url)
 
     if blocked_rule:
@@ -260,9 +281,6 @@ def handle_http(client_socket, address, request_bytes, first_line, database_path
 
 
 def handle_client(client_socket, address, database_path):
-    # Fix IP 
-    real_ip = get_real_local_ip(address[0])
-    address = (real_ip, address[1])
     with client_socket:
         try:
             client_socket.settimeout(SOCKET_TIMEOUT)
@@ -296,6 +314,10 @@ def serve_forever(host, port, database_path):
 
 
 def start_proxy_server(database_path, host="127.0.0.1", port=8888):
+    global PROXY_IP
+    PROXY_IP = get_real_local_ip(host) if host in ("127.0.0.1", "localhost") else host
+    if PROXY_IP == "0.0.0.0":
+        PROXY_IP = get_real_local_ip("127.0.0.1")
     thread = threading.Thread(
         target=serve_forever,
         args=(host, port, database_path),

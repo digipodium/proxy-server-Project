@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import socket
 from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Lock
@@ -16,9 +17,11 @@ app = Flask(__name__)
 app.secret_key = "secretkey"
 DATA_DIR = Path(os.environ.get("LOCALAPPDATA", app.root_path)) / "CyberProxyDefender"
 DATABASE = DATA_DIR / "users.db"
-PROXY_HOST = "127.0.0.1"
+PROXY_HOST = os.environ.get("PROXY_BIND_HOST", "0.0.0.0")
 PROXY_PORT = 8888
-PROXY_PUBLIC_IP = "127.0.0.1"
+PROXY_PUBLIC_IP = os.environ.get("PROXY_PUBLIC_IP", "127.0.0.1")
+APP_HOST = os.environ.get("APP_BIND_HOST", "0.0.0.0")
+APP_PORT = int(os.environ.get("APP_PORT", "5000"))
 import time
 proxy_thread = None
 proxy_lock = Lock()
@@ -118,6 +121,15 @@ def init_db():
             url TEXT UNIQUE NOT NULL,
             reason TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS client_sessions (
+            client_ip TEXT PRIMARY KEY,
+            username TEXT NOT NULL,
+            last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """
     )
@@ -555,6 +567,25 @@ def ensure_proxy_server():
     return proxy_thread
 
 
+def get_proxy_advertised_host():
+    configured = os.environ.get("PROXY_PUBLIC_IP", "").strip()
+    if configured:
+        return configured
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            return sock.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
+
+
+def get_request_client_ip():
+    forwarded_for = (request.headers.get("X-Forwarded-For") or "").strip()
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.remote_addr or "127.0.0.1"
+
+
 @app.teardown_appcontext
 def close_db(error):
     db = g.pop("db", None)
@@ -565,13 +596,25 @@ def close_db(error):
 def update_last_active():
     if "user" in session:
         username = session["user"]
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        client_ip = get_request_client_ip()
         # Update in-memory registry instantly
         _ping_user(username)
         # Also persist to DB for historical tracking
         db = get_db()
         db.execute(
             "UPDATE users SET last_active_at = ? WHERE username = ?",
-            (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), username),
+            (now, username),
+        )
+        db.execute(
+            """
+            INSERT INTO client_sessions (client_ip, username, last_seen)
+            VALUES (?, ?, ?)
+            ON CONFLICT(client_ip) DO UPDATE SET
+                username = excluded.username,
+                last_seen = excluded.last_seen
+            """,
+            (client_ip, username, now),
         )
         db.commit()
 
@@ -820,7 +863,7 @@ def dashboard():
             username=session["user"],
             stats=stats,
             latest_users=latest_users,
-            proxy_host=PROXY_HOST,
+            proxy_host=get_proxy_advertised_host(),
             proxy_port=PROXY_PORT,
             active_page="dashboard",
         )
@@ -1059,7 +1102,7 @@ def traffic():
         traffic_feed=traffic_feed,
         recent_alerts=recent_alerts,
         display_host=display_host,
-        proxy_host=PROXY_HOST,
+        proxy_host=get_proxy_advertised_host(),
         proxy_port=PROXY_PORT,
         active_page="traffic",
     )
@@ -1100,5 +1143,17 @@ init_db()
 
 if __name__ == "__main__":
     ensure_proxy_server()
-    app.run(debug=True, use_reloader=False)
+    app.run(host=APP_HOST, port=APP_PORT, debug=True, use_reloader=False)
 
+
+# Use LAN pe chalane ke liye PowerShell me server machine par:
+
+# $env:APP_BIND_HOST="0.0.0.0"
+# $env:APP_PORT="5000"
+# python app.py
+# Phir client machine me open karo:
+
+# http://<SERVER_LAN_IP>:5000 (login/register)
+# Proxy set: <SERVER_LAN_IP>:8888
+# <SERVER_LAN_IP> dekhne ke liye server machine par ipconfig chalao, IPv4 Address use karo (e.g. 192.168.1.20).
+# Agar phir bhi open na ho to Windows Firewall me port 5000 aur 8888 allow karo.
