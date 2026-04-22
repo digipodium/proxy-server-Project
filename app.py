@@ -345,6 +345,9 @@ def get_traffic_data():
         """
         SELECT
             l.username,
+            u.full_name,
+            cs.username AS session_username,
+            su.full_name AS session_full_name,
             l.client_ip,
             l.proxy_ip,
             l.url,
@@ -359,22 +362,13 @@ def get_traffic_data():
             strftime('%H:%M:%S', l.requested_at) AS request_time
         FROM logs l
         LEFT JOIN users u ON u.username = l.username
+        LEFT JOIN client_sessions cs ON cs.client_ip = l.client_ip
+        LEFT JOIN users su ON su.username = cs.username
         WHERE COALESCE(u.role, 'user') = 'user'
         ORDER BY l.requested_at DESC
         LIMIT 10
         """
     ).fetchall()
-    recent_alerts = db.execute(
-        """
-        SELECT l.username, l.url, l.threat_level, l.requested_at
-        FROM logs l
-        LEFT JOIN users u ON u.username = l.username
-        WHERE COALESCE(u.role, 'user') = 'user' AND l.status = 'Blocked'
-        ORDER BY l.requested_at DESC
-        LIMIT 5
-        """
-    ).fetchall()
-
     total_bandwidth = sum(row["bandwidth_kb"] for row in protocol_rows)
     allowed_count = db.execute(
         """
@@ -409,8 +403,16 @@ def get_traffic_data():
                 client_ip = "127.0.0.1"
 
         website_domain = row["website_domain"] or display_host(row["url"])
+        user_display_name = (
+            row["session_full_name"]
+            or row["full_name"]
+            or row["session_username"]
+            or row["username"]
+            or "Unknown"
+        )
         traffic_feed.append(
             {
+                "user_display_name": str(user_display_name),
                 "client_ip": str(client_ip or "Unknown"),
                 "proxy_ip": str(row["proxy_ip"] or PROXY_PUBLIC_IP),
                 "target_ip": str(row["target_ip"] or "Unknown"),
@@ -425,16 +427,26 @@ def get_traffic_data():
                 "request_time": str(row["request_time"] or ""),
             }
         )
-    return summary, protocol_rows, top_destinations, traffic_feed, recent_alerts
+    return summary, protocol_rows, top_destinations, traffic_feed
 
 
 def get_logs_data():
     db = get_db()
     system_logs = db.execute(
         """
-        SELECT l.username, l.url, l.method, l.protocol, l.status, l.threat_level, l.bandwidth_kb, l.requested_at
+        SELECT
+            COALESCE(NULLIF(su.full_name, ''), NULLIF(u.full_name, ''), cs.username, l.username) AS username,
+            l.url,
+            l.method,
+            l.protocol,
+            l.status,
+            l.threat_level,
+            l.bandwidth_kb,
+            l.requested_at
         FROM logs l
         LEFT JOIN users u ON u.username = l.username
+        LEFT JOIN client_sessions cs ON cs.client_ip = l.client_ip
+        LEFT JOIN users su ON su.username = cs.username
         WHERE COALESCE(u.role, 'user') = 'user'
         ORDER BY l.requested_at DESC
         LIMIT 14
@@ -442,9 +454,15 @@ def get_logs_data():
     ).fetchall()
     blocked_activity = db.execute(
         """
-        SELECT l.username, l.url, l.threat_level, l.requested_at
+        SELECT
+            COALESCE(NULLIF(su.full_name, ''), NULLIF(u.full_name, ''), cs.username, l.username) AS username,
+            l.url,
+            l.threat_level,
+            l.requested_at
         FROM logs l
         LEFT JOIN users u ON u.username = l.username
+        LEFT JOIN client_sessions cs ON cs.client_ip = l.client_ip
+        LEFT JOIN users su ON su.username = cs.username
         WHERE COALESCE(u.role, 'user') = 'user' AND l.status = 'Blocked'
         ORDER BY l.requested_at DESC
         LIMIT 8
@@ -460,11 +478,15 @@ def get_logs_data():
     ).fetchall()
     activity_by_user = db.execute(
         """
-        SELECT l.username AS username, COUNT(*) AS total_events
+        SELECT
+            COALESCE(NULLIF(su.full_name, ''), NULLIF(u.full_name, ''), cs.username, l.username) AS username,
+            COUNT(*) AS total_events
         FROM logs l
         LEFT JOIN users u ON u.username = l.username
+        LEFT JOIN client_sessions cs ON cs.client_ip = l.client_ip
+        LEFT JOIN users su ON su.username = cs.username
         WHERE COALESCE(u.role, 'user') = 'user'
-        GROUP BY l.username
+        GROUP BY COALESCE(NULLIF(su.full_name, ''), NULLIF(u.full_name, ''), cs.username, l.username)
         ORDER BY total_events DESC, 1 ASC
         LIMIT 6
         """
@@ -643,7 +665,7 @@ def api_traffic_summary():
     try:
         if "user" not in session:
             return Response(json.dumps({"error": "Unauthorized"}), status=401, mimetype='application/json')
-        summary, protocol_rows, top_rows, _, _ = get_traffic_data()
+        summary, protocol_rows, top_rows, _ = get_traffic_data()
         top_destinations = [
             {
                 "destination": display_host(row["url"]),
@@ -677,7 +699,7 @@ def api_traffic_feed():
         if "user" not in session:
             return Response(json.dumps({"error": "Unauthorized"}), status=401, mimetype='application/json')
         
-        _, _, _, traffic_feed, _ = get_traffic_data()
+        _, _, _, traffic_feed = get_traffic_data()
         # Bulletproof manual serialization
         json_data = json.dumps(traffic_feed, default=str)
         return Response(json_data, mimetype='application/json')
@@ -1074,7 +1096,6 @@ def settings():
 
     preferences = {
         "session_security": "Enabled",
-        "traffic_alerts": "Email alerts for blocked requests",
         "log_retention": "30 days",
         "role": "Administrator",
     }
@@ -1092,7 +1113,7 @@ def traffic():
     if "user" not in session:
         return redirect(url_for("login"))
     ensure_proxy_server()
-    summary, protocol_rows, top_destinations, traffic_feed, recent_alerts = get_traffic_data()
+    summary, protocol_rows, top_destinations, traffic_feed = get_traffic_data()
     return render_template(
         "traffic.html",
         username=session["user"],
@@ -1100,7 +1121,6 @@ def traffic():
         protocol_rows=protocol_rows,
         top_destinations=top_destinations,
         traffic_feed=traffic_feed,
-        recent_alerts=recent_alerts,
         display_host=display_host,
         proxy_host=get_proxy_advertised_host(),
         proxy_port=PROXY_PORT,

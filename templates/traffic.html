@@ -56,33 +56,6 @@
                 {% endfor %}
             </div>
         </article>
-
-        <article class="dashboard-panel insight-card">
-            <div class="panel-header">
-                <div>
-                    <p class="eyebrow">Intrusion Detection</p>
-                    <h3>Recent suspicious activity</h3>
-                </div>
-            </div>
-            {% if recent_alerts %}
-            <div class="alert-list">
-                {% for alert in recent_alerts %}
-                <div class="alert-row">
-                    <div>
-                        <strong>{{ alert.username }}</strong>
-                        <p>{{ display_host(alert.url) }}</p>
-                    </div>
-                    <div class="log-meta">
-                        <span class="severity severity-{{ alert.threat_level|lower }}">{{ alert.threat_level }}</span>
-                        <small>{{ alert.requested_at }}</small>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="empty">No suspicious activity detected.</p>
-            {% endif %}
-        </article>
     </section>
 
     <section class="dashboard-panel dashboard-table-panel">
@@ -132,7 +105,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Real User IP</th>
+                        <th>User Name</th>
                         <th>Proxy Server IP</th>
                         <th>Website Details</th>
                         <th>Timing</th>
@@ -142,7 +115,7 @@
                 <tbody id="traffic-feed-body">
                     {% for row in traffic_feed %}
                     <tr>
-                        <td>{{ row.client_ip }}</td>
+                        <td>{{ row.user_display_name }}</td>
                         <td>{{ row.proxy_ip }}</td>
                         <td>
                             <strong>{{ row.method }} / {{ row.protocol }}</strong><br>
@@ -182,7 +155,7 @@
                 if (data && data.length > 0) {
                     tableBody.innerHTML = data.map(row => `
                         <tr>
-                            <td>${row.client_ip}</td>
+                            <td>${row.user_display_name || row.client_ip}</td>
                             <td>${row.proxy_ip}</td>
                             <td>
                                 <strong>${row.method} / ${row.protocol}</strong><br>

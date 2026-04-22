@@ -57,26 +57,43 @@
     </section>
 
     <!-- How It Works Section -->
-    <section class="landing-section" id="how-it-works" style="background: rgba(59, 130, 246, 0.03);">
+    <section class="landing-section process-section" id="how-it-works">
         <div class="landing-wrapper">
             <div class="section-header">
                 <p class="eyebrow" style="color: var(--accent-cyan);">The Process</p>
                 <h2>How It Works</h2>
             </div>
-            <div class="workflow-container">
-                <div class="workflow-step">
-                    <div class="step-icon glass-panel"><i data-lucide="smartphone"></i></div>
-                    <p style="font-weight: 500;">User</p>
+            <div class="process-diagram">
+                <div class="process-cluster process-cluster-users">
+                    <div class="cluster-icons">
+                        <div class="process-node user-node node-top"><i data-lucide="smartphone"></i></div>
+                        <div class="process-node user-node node-left"><i data-lucide="smartphone"></i></div>
+                        <div class="process-node user-node node-right"><i data-lucide="tablet-smartphone"></i></div>
+                        <div class="process-node user-node node-bottom"><i data-lucide="monitor-smartphone"></i></div>
+                    </div>
+                    <p class="process-label process-label-left">Users</p>
                 </div>
-                <div class="workflow-arrow"></div>
-                <div class="workflow-step">
-                    <div class="step-icon glass-panel" style="border-color: var(--accent-cyan); color: var(--accent-cyan);"><i data-lucide="shield-check"></i></div>
-                    <p style="font-weight: 600; color: var(--accent-cyan);">Proxy Server</p>
+
+                <div class="process-links process-links-left" aria-hidden="true">
+                    <div class="request-line request-line-top"><span>Request</span></div>
+                    <div class="request-line request-line-middle"><span>Request</span></div>
+                    <div class="request-line request-line-bottom"><span>Request</span></div>
                 </div>
-                <div class="workflow-arrow"></div>
-                <div class="workflow-step">
-                    <div class="step-icon glass-panel"><i data-lucide="globe"></i></div>
-                    <p style="font-weight: 500;">Website</p>
+
+                <div class="process-cluster process-cluster-center">
+                    <div class="process-node proxy-node">
+                        <i data-lucide="shield-check"></i>
+                    </div>
+                    <p class="process-label process-label-center">Proxy Server</p>
+                </div>
+
+                <div class="process-links process-links-right" aria-hidden="true">
+                    <div class="request-line request-line-straight"><span>Request</span></div>
+                </div>
+
+                <div class="process-cluster process-cluster-internet">
+                    <div class="process-node internet-node"><i data-lucide="globe"></i></div>
+                    <p class="process-label">Internet</p>
                 </div>
             </div>
         </div>
@@ -135,7 +152,7 @@
             <div style="display: flex; gap: 32px;">
                 <a href="#features" style="color: var(--text-dim);">Features</a>
                 <a href="#about" style="color: var(--text-dim);">About</a>
-                <a href="https://github.com" style="color: var(--text-dim);">GitHub</a>
+                <a href="https://github.blog" style="color: var(--text-dim);">GitHub</a>
             </div>
             <div style="display: flex; gap: 16px;">
                 <i data-lucide="facebook" style="width: 20px; color: var(--text-dim);"></i>
